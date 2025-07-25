@@ -36,14 +36,16 @@ export interface Role {
 
 export interface Employee {
   emp_id: number;
+  emp_det_id: number;
   name: string;
   cnic: string;
+  start_date: string;
   type: 'fixed' | 'editable';
   status: string;
-  dept_id: number;
   section_id: number;
   desig_id: number;
   role_id: number;
+  dept_id: number;
   department_name?: string;
   section_name?: string;
   designation_title?: string;
@@ -54,7 +56,7 @@ export interface EmployeeFormData {
   emp_id?: number; // Optional, present when editing
   name: string;
   cnic: string;
-  dept_id: string;
+  start_date: string;
   section_id: string;
   desig_id: string;
   role_id: string;

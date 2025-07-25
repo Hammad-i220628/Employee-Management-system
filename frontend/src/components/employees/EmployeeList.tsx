@@ -39,13 +39,16 @@ export const EmployeeList: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleDeleteEmployee = async (id: number) => {
+  const handleDeleteEmployee = async (employee: Employee) => {
     if (!window.confirm('Are you sure you want to delete this employee?')) {
       return;
     }
 
     try {
-      await employeeAPI.delete(id);
+      // For unassigned employees (emp_id = 0), use emp_det_id
+      // For assigned employees (emp_id > 0), use emp_id
+      const deleteId = employee.emp_id === 0 ? `det/${employee.emp_det_id}` : employee.emp_id;
+      await employeeAPI.delete(deleteId);
       await loadEmployees();
     } catch (error: any) {
       setError(error.message || 'Failed to delete employee');
@@ -77,6 +80,8 @@ export const EmployeeList: React.FC = () => {
         return `${baseClasses} bg-red-100 text-red-800`;
       case 'editable':
         return `${baseClasses} bg-blue-100 text-blue-800`;
+      case 'unassigned':
+        return `${baseClasses} bg-orange-100 text-orange-800`;
       default:
         return `${baseClasses} bg-gray-100 text-gray-800`;
     }
@@ -107,12 +112,13 @@ export const EmployeeList: React.FC = () => {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {employees.filter(employee => employee.role_name !== 'Admin').map((employee) => (
-          <Card key={employee.emp_id} className="p-6">
+          <Card key={employee.emp_id === 0 ? `unassigned-${employee.emp_det_id}` : employee.emp_id} className="p-6">
             <div className="space-y-4">
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{employee.name}</h3>
                   <p className="text-sm text-gray-600">CNIC: {employee.cnic}</p>
+                  <p className="text-sm text-gray-600">Started: {new Date(employee.start_date).toLocaleDateString()}</p>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className={getStatusBadge(employee.status)}>
@@ -149,7 +155,7 @@ export const EmployeeList: React.FC = () => {
                   Edit
                 </Button>
                 <Button
-                  onClick={() => handleDeleteEmployee(employee.emp_id)}
+                  onClick={() => handleDeleteEmployee(employee)}
                   variant="outline"
                   className="flex-1 text-red-600 hover:text-red-700 hover:border-red-300"
                 >

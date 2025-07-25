@@ -49,12 +49,19 @@ CREATE TABLE Roles (
 );
 GO
 
--- Employees Table
-CREATE TABLE Employees (
-    emp_id INT PRIMARY KEY IDENTITY(1,1),
+-- EmployeeDetails Table (Fixed information)
+CREATE TABLE EmployeeDetails (
+    emp_det_id INT PRIMARY KEY IDENTITY(1,1),
     name VARCHAR(100) NOT NULL,
     cnic VARCHAR(15) UNIQUE NOT NULL,
-    dept_id INT NOT NULL FOREIGN KEY REFERENCES Departments(dept_id),
+    start_date DATE NOT NULL
+);
+GO
+
+-- Employees Table (Editable information)
+CREATE TABLE Employees (
+    emp_id INT PRIMARY KEY IDENTITY(1,1),
+    emp_det_id INT NOT NULL FOREIGN KEY REFERENCES EmployeeDetails(emp_det_id),
     section_id INT NOT NULL FOREIGN KEY REFERENCES Sections(section_id),
     desig_id INT NOT NULL FOREIGN KEY REFERENCES Designations(desig_id),
     role_id INT NOT NULL FOREIGN KEY REFERENCES Roles(role_id),
@@ -87,37 +94,48 @@ BEGIN
 END;
 GO
 
--- Stored Procedure: Add Employee
-CREATE PROCEDURE sp_AddEmployee
+-- Stored Procedure: Add EmployeeDetails (Fixed information)
+CREATE PROCEDURE sp_AddEmployeeDetails
     @name VARCHAR(100),
     @cnic VARCHAR(15),
-    @dept_id INT,
+    @start_date DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO EmployeeDetails (name, cnic, start_date)
+    VALUES (@name, @cnic, @start_date);
+
+    SELECT SCOPE_IDENTITY() AS emp_det_id;
+END;
+GO
+
+-- Stored Procedure: Add Employee (Editable information)
+CREATE PROCEDURE sp_AddEmployee
+    @emp_det_id INT,
     @section_id INT,
     @desig_id INT,
     @role_id INT,
     @type VARCHAR(10)
 AS
 BEGIN
-    INSERT INTO Employees (name, cnic, dept_id, section_id, desig_id, role_id, type)
-    VALUES (@name, @cnic, @dept_id, @section_id, @desig_id, @role_id, @type);
+    SET NOCOUNT ON;
+    INSERT INTO Employees (emp_det_id, section_id, desig_id, role_id, type)
+    VALUES (@emp_det_id, @section_id, @desig_id, @role_id, @type);
+    
+    SELECT SCOPE_IDENTITY() AS emp_id;
 END;
 GO
 
--- Stored Procedure: Update Employee
+-- Stored Procedure: Update Employee (Only editable fields)
 CREATE PROCEDURE sp_UpdateEmployee
     @user_email VARCHAR(100),
     @emp_id INT,
-    @name VARCHAR(100),
-    @cnic VARCHAR(15),
-    @dept_id INT,
     @section_id INT,
     @desig_id INT,
     @role_id INT
 AS
 BEGIN
-    DECLARE @type VARCHAR(10);
-    DECLARE @current_name VARCHAR(100);
-    DECLARE @current_cnic VARCHAR(15);
+    SET NOCOUNT ON;
     DECLARE @user_role VARCHAR(20);
 
     SELECT @user_role = role FROM Users WHERE email = @user_email;
@@ -128,21 +146,8 @@ BEGIN
         RETURN;
     END
 
-    SELECT 
-        @type = type,
-        @current_name = name,
-        @current_cnic = cnic
-    FROM Employees WHERE emp_id = @emp_id;
-
-    IF @name <> @current_name OR @cnic <> @current_cnic
-    BEGIN
-        RAISERROR('Name and CNIC cannot be changed.', 16, 1);
-        RETURN;
-    END
-
     UPDATE Employees
-    SET dept_id = @dept_id,
-        section_id = @section_id,
+    SET section_id = @section_id,
         desig_id = @desig_id,
         role_id = @role_id
     WHERE emp_id = @emp_id;
@@ -161,7 +166,6 @@ BEGIN
     INNER JOIN inserted i ON e.emp_id = i.emp_id
     INNER JOIN deleted d ON e.emp_id = d.emp_id
     WHERE (
-        i.dept_id <> d.dept_id OR
         i.section_id <> d.section_id OR
         i.desig_id <> d.desig_id OR
         i.role_id <> d.role_id
@@ -208,10 +212,41 @@ BEGIN
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM Employees WHERE name = 'admin')
+-- Add Admin Employee Details and Employee
+IF NOT EXISTS (SELECT 1 FROM EmployeeDetails WHERE cnic = '00000-0000000-0')
 BEGIN
-    EXEC sp_AddEmployee 'admin', '00000-0000000-0', 1, 1, 1, 1, 'fixed';
+    DECLARE @admin_emp_det_id INT;
+    EXEC sp_AddEmployeeDetails 'admin', '00000-0000000-0', '2024-01-01';
+    SELECT @admin_emp_det_id = SCOPE_IDENTITY();
+    
+    EXEC sp_AddEmployee @admin_emp_det_id, 1, 1, 1, 'fixed';
 END
+GO
+
+-- View to get complete employee information
+CREATE VIEW vw_EmployeeDetails AS
+SELECT 
+    e.emp_id,
+    ed.emp_det_id,
+    ed.name,
+    ed.cnic,
+    ed.start_date,
+    e.type,
+    e.status,
+    e.section_id,
+    e.desig_id,
+    e.role_id,
+    s.dept_id,
+    d.name as department_name,
+    s.name as section_name,
+    des.title as designation_title,
+    r.name as role_name
+FROM Employees e
+INNER JOIN EmployeeDetails ed ON e.emp_det_id = ed.emp_det_id
+INNER JOIN Sections s ON e.section_id = s.section_id
+INNER JOIN Departments d ON s.dept_id = d.dept_id
+INNER JOIN Designations des ON e.desig_id = des.desig_id
+INNER JOIN Roles r ON e.role_id = r.role_id;
 GO
 
 -- Database Verification Queries
@@ -224,10 +259,7 @@ SELECT * FROM Departments;
 SELECT * FROM Sections;
 SELECT * FROM Designations;
 SELECT * FROM Roles;
+SELECT * FROM EmployeeDetails;
 SELECT * FROM Employees;
+SELECT * FROM vw_EmployeeDetails;
 SELECT * FROM Users WHERE email = 'admin@gmail.com';
-
--- FOR deleting employee, section and its department
-DELETE FROM Employees WHERE dept_id = 8;
-DELETE FROM Sections WHERE dept_id = 8;
-DELETE FROM Departments WHERE dept_id = 8; 

@@ -15,12 +15,14 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
   const [formData, setFormData] = useState<EmployeeFormData>({
     name: '',
     cnic: '',
-    dept_id: '',
+    start_date: '',
     section_id: '',
     desig_id: '',
     role_id: '',
     type: 'editable'
   });
+  
+  const [selectedDepartment, setSelectedDepartment] = useState('');
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
@@ -40,12 +42,13 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
       setFormData({
         name: employee.name,
         cnic: employee.cnic,
-        dept_id: String(employee.dept_id),
+        start_date: employee.start_date,
         section_id: String(employee.section_id),
         desig_id: String(employee.desig_id),
         role_id: String(employee.role_id),
         type: employee.type
       });
+      setSelectedDepartment(String(employee.dept_id));
       setOriginalName(employee.name);
       setOriginalCnic(employee.cnic);
     }
@@ -74,43 +77,69 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
     setLoading(true);
     setError('');
 
-    // Validate all required fields
-    if (
-      !formData.name ||
-      !formData.cnic ||
-      !formData.dept_id ||
-      !formData.section_id ||
-      !formData.desig_id ||
-      !formData.role_id
-    ) {
-      setError('Please fill in all fields.');
-      setLoading(false);
-      return;
+    // Validate required fields based on whether adding new or editing existing employee
+    if (!employee) {
+      // For new employees, only validate name, cnic, and start_date
+      if (!formData.name || !formData.cnic || !formData.start_date) {
+        setError('Please fill in all fields.');
+        setLoading(false);
+        return;
+      }
+    } else {
+      // For existing employees, validate editable fields
+      if (!formData.section_id || !formData.desig_id || !formData.role_id) {
+        setError('Please fill in all fields.');
+        setLoading(false);
+        return;
+      }
     }
 
     // Prevent updating Name or CNIC
     if (employee && (formData.name !== originalName || formData.cnic !== originalCnic)) {
-      setError("Name and CNIC can't be changed. Only Department, Section, Designation, and Role can be updated.");
+      setError("Name and CNIC can't be changed. Only Section, Designation, and Role can be updated.");
       setLoading(false);
       return;
     }
 
-    // Convert string IDs to numbers for backend
-    const payload = {
-      ...formData,
-      dept_id: Number(formData.dept_id),
-      section_id: Number(formData.section_id),
-      desig_id: Number(formData.desig_id),
-      role_id: Number(formData.role_id),
-    };
-
-    console.log('Submitting employee payload:', payload);
-
     try {
       if (employee) {
-        await employeeAPI.update(employee.emp_id, payload);
+        const updatePayload = {
+          section_id: Number(formData.section_id),
+          desig_id: Number(formData.desig_id),
+          role_id: Number(formData.role_id),
+        };
+        console.log('Updating employee payload:', updatePayload);
+        
+        // Check if employee is unassigned (emp_id = 0)
+        if (employee.emp_id === 0) {
+          // For unassigned employees, use the assign endpoint
+          console.log('Assigning unassigned employee with emp_det_id:', employee.emp_det_id);
+          const response = await fetch(`http://localhost:5000/api/employees/assign/${employee.emp_det_id}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(updatePayload)
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to assign employee');
+          }
+        } else {
+          // For assigned employees, use the regular update endpoint
+          await employeeAPI.update(employee.emp_id, updatePayload);
+        }
       } else {
-        await employeeAPI.create({ ...payload, type: 'editable' }); // Always send type
+        // For new employees, only send basic details
+        const createPayload = {
+          name: formData.name,
+          cnic: formData.cnic,
+          start_date: formData.start_date
+        };
+        console.log('Creating employee payload:', createPayload);
+        await employeeAPI.create(createPayload);
       }
       onSubmit();
     } catch (error: any) {
@@ -122,13 +151,20 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => {
-      if (name === 'dept_id') {
-        // When department changes, reset section_id
-        return { ...prev, dept_id: value, section_id: '' };
-      }
-      return { ...prev, [name]: value };
-    });
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const departmentId = e.target.value;
+    setSelectedDepartment(departmentId);
+    // Clear section when department changes
+    setFormData(prev => ({ ...prev, section_id: '' }));
+  };
+
+  // Filter sections based on selected department
+  const getFilteredSections = () => {
+    if (!selectedDepartment) return [];
+    return sections.filter(section => section.dept_id === Number(selectedDepartment));
   };
 
   const isFixedEmployee = employee?.type === 'fixed';
@@ -198,8 +234,8 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
             readOnly={!!employee}
             disabled={!!employee}
           />
-          {isFixedEmployee && (
-            <p className="text-xs text-gray-500 mt-1">Name cannot be changed for fixed employees</p>
+          {!!employee && (
+            <p className="text-xs text-gray-500 mt-1">Name cannot be changed</p>
           )}
         </div>
 
@@ -218,70 +254,93 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
             readOnly={!!employee}
             disabled={!!employee}
           />
-          {isFixedEmployee && (
-            <p className="text-xs text-gray-500 mt-1">CNIC cannot be changed for fixed employees</p>
+          {!!employee && (
+            <p className="text-xs text-gray-500 mt-1">CNIC cannot be changed</p>
           )}
         </div>
 
-        <div>
-          <label htmlFor="dept_id" className="block text-sm font-medium text-gray-700 mb-1">
-            Department
+        <div className={!employee ? "md:col-span-2" : ""}>
+          <label htmlFor="start_date" className="block text-sm font-medium text-gray-700 mb-1">
+            Starting Date
           </label>
-          <Select
-            id="dept_id"
-            name="dept_id"
-            value={formData.dept_id}
+          <Input
+            id="start_date"
+            name="start_date"
+            type="date"
+            value={formData.start_date}
             onChange={handleChange}
-            required
-            options={[
-              { value: '', label: 'Select an option' },
-              ...departmentOptions.map(opt => ({ value: opt.value, label: opt.label }))
-            ]}
+            required={!employee}
+            placeholder="Select starting date"
+            readOnly={!!employee}
+            disabled={!!employee}
           />
+          {!!employee && (
+            <p className="text-xs text-gray-500 mt-1">Starting date cannot be changed</p>
+          )}
         </div>
 
-        <div>
-          <label htmlFor="section_id" className="block text-sm font-medium text-gray-700 mb-1">
-            Section
-          </label>
-          <Select
-            id="section_id"
-            name="section_id"
-            value={formData.section_id}
-            onChange={handleChange}
-            required
-            disabled={!formData.dept_id}
-            options={sectionOptions[formData.dept_id] || []}
-          />
-        </div>
+        {/* Only show editable fields when editing an employee */}
+        {employee && (
+          <>
+            <div>
+              <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                Department
+              </label>
+              <Select
+                id="department"
+                name="department"
+                value={selectedDepartment}
+                onChange={handleDepartmentChange}
+                required
+                options={departments.map(d => ({ value: d.dept_id, label: d.name }))}
+              />
+            </div>
 
-        <div>
-          <label htmlFor="role_id" className="block text-sm font-medium text-gray-700 mb-1">
-            Role
-          </label>
-          <Select
-            id="role_id"
-            name="role_id"
-            value={formData.role_id}
-            onChange={handleChange}
-            required
-            options={roleOptions}
-          />
-        </div>
-        <div>
-          <label htmlFor="desig_id" className="block text-sm font-medium text-gray-700 mb-1">
-            Designation
-          </label>
-          <Select
-            id="desig_id"
-            name="desig_id"
-            value={formData.desig_id}
-            onChange={handleChange}
-            required
-            disabled={!formData.role_id}
-            options={designationOptions[formData.role_id] || []}
-          />
-        </div>
+            <div>
+              <label htmlFor="section_id" className="block text-sm font-medium text-gray-700 mb-1">
+                Section
+              </label>
+              <Select
+                id="section_id"
+                name="section_id"
+                value={formData.section_id}
+                onChange={handleChange}
+                required
+                disabled={!selectedDepartment}
+                options={getFilteredSections().map(s => ({ value: s.section_id, label: s.name }))}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="role_id" className="block text-sm font-medium text-gray-700 mb-1">
+                Role
+              </label>
+              <Select
+                id="role_id"
+                name="role_id"
+                value={formData.role_id}
+                onChange={handleChange}
+                required
+                options={roleOptions}
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="desig_id" className="block text-sm font-medium text-gray-700 mb-1">
+                Designation
+              </label>
+              <Select
+                id="desig_id"
+                name="desig_id"
+                value={formData.desig_id}
+                onChange={handleChange}
+                required
+                disabled={!formData.role_id}
+                options={designationOptions[formData.role_id] || []}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex justify-end space-x-3 pt-6">
