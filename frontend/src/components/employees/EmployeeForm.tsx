@@ -169,46 +169,21 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
 
   const isFixedEmployee = employee?.type === 'fixed';
 
-  // Remove API-based loading for departments, sections, roles, and designations
-  // Add hardcoded options for departments, sections, roles, and designations
+  // Dynamic options based on API data
+  const departmentOptions = departments.map(dept => ({ 
+    value: dept.dept_id, 
+    label: dept.name 
+  }));
 
-  // Use IDs as values for all dropdowns
-  const departmentOptions = [
-    { value: '1', label: 'HR (Human Resources)' },
-    { value: '2', label: 'IT (Information Technology)' },
-    { value: '3', label: 'Finance' },
-  ];
+  const roleOptions = roles.map(role => ({ 
+    value: role.role_id, 
+    label: role.name 
+  }));
 
-  const sectionOptions: Record<string, { value: string; label: string }[]> = {
-    '1': [ // HR
-      { value: '1', label: 'Recruitment' },
-      { value: '2', label: 'Employee Relations' },
-    ],
-    '2': [ // IT
-      { value: '3', label: 'Software Development' },
-      { value: '4', label: 'IT Support' },
-    ],
-    '3': [ // Finance
-      { value: '5', label: 'Accounts Payable' },
-      { value: '6', label: 'Budgeting & Planning' },
-    ],
-  };
-
-  const roleOptions = [
-    { value: '1', label: 'Employee' },
-    { value: '2', label: 'HR' },
-  ];
-
-  const designationOptions: Record<string, { value: string; label: string }[]> = {
-    '1': [
-      { value: '1', label: 'Software Engineer' },
-      { value: '2', label: 'Accounts Executive' },
-    ],
-    '2': [
-      { value: '3', label: 'HR Manager' },
-      { value: '4', label: 'Recruitment Officer' },
-    ],
-  };
+  const designationOptions = designations.map(designation => ({ 
+    value: designation.desig_id, 
+    label: designation.title 
+  }));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -335,8 +310,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
                 value={formData.desig_id}
                 onChange={handleChange}
                 required
-                disabled={!formData.role_id}
-                options={designationOptions[formData.role_id] || []}
+                options={designationOptions}
               />
             </div>
           </>
