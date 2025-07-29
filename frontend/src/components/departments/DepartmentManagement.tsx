@@ -5,31 +5,23 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { Modal } from '../ui/Modal';
-import { Select } from '../ui/Select';
 
-type ManagementType = 'departments' | 'sections';
-
-interface FormData {
-  name?: string;
-  dept_id?: number;
+interface SectionFormData {
+  name: string;
+  dept_id: number;
 }
 
 export const DepartmentManagement: React.FC = () => {
-  const tabs = [
-    { key: 'departments', label: 'Departments' },
-    { key: 'sections', label: 'Sections' }
-  ];
-  const [activeTab, setActiveTab] = useState('departments');
   const [departments, setDepartments] = useState<Department[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
-  const [formData, setFormData] = useState<FormData>({});
+  const [showDepartmentModal, setShowDepartmentModal] = useState(false);
   const [showSectionModal, setShowSectionModal] = useState(false);
+  const [editingDepartment, setEditingDepartment] = useState<any>(null);
   const [editingSection, setEditingSection] = useState<any>(null);
-  const [sectionFormData, setSectionFormData] = useState({ name: '', dept_id: 0 });
+  const [departmentFormData, setDepartmentFormData] = useState({ name: '' });
+  const [sectionFormData, setSectionFormData] = useState<SectionFormData>({ name: '', dept_id: 0 });
 
   useEffect(() => {
     loadData();
@@ -52,90 +44,61 @@ export const DepartmentManagement: React.FC = () => {
     }
   };
 
-  const handleAdd = () => {
-    setEditingItem(null);
-    setFormData({});
-    setShowModal(true);
+  // Department handlers
+  const handleAddDepartment = () => {
+    setEditingDepartment(null);
+    setDepartmentFormData({ name: '' });
+    setShowDepartmentModal(true);
   };
 
-  const handleEdit = (item: any) => {
-    setEditingItem(item);
-    setFormData({
-      name: item.name,
-      dept_id: item.dept_id
-    });
-    setShowModal(true);
+  const handleEditDepartment = (department: any) => {
+    setEditingDepartment(department);
+    setDepartmentFormData({ name: department.name });
+    setShowDepartmentModal(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) {
+  const handleDeleteDepartment = async (departmentId: number) => {
+    if (!window.confirm('Are you sure you want to delete this department?')) {
       return;
     }
 
     try {
-      switch (activeTab) {
-        case 'departments':
-          await departmentAPI.delete(id);
-          break;
-        case 'sections':
-          await sectionAPI.delete(id);
-          break;
-      }
+      await departmentAPI.delete(departmentId);
       await loadData();
     } catch (error: any) {
-      setError(error.message || 'Failed to delete item');
+      setError(error.message || 'Failed to delete department');
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleDepartmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      switch (activeTab) {
-        case 'departments':
-          if (editingItem) {
-            await departmentAPI.update(editingItem.dept_id, { name: formData.name! });
-          } else {
-            await departmentAPI.create({ name: formData.name! });
-          }
-          break;
-        case 'sections':
-          if (editingItem) {
-            await sectionAPI.update(editingItem.section_id, { 
-              name: formData.name!, 
-              dept_id: formData.dept_id! 
-            });
-          } else {
-            await sectionAPI.create({ 
-              name: formData.name!, 
-              dept_id: formData.dept_id! 
-            });
-          }
-          break;
+      if (editingDepartment) {
+        await departmentAPI.update(editingDepartment.dept_id, { name: departmentFormData.name });
+      } else {
+        await departmentAPI.create({ name: departmentFormData.name });
       }
       
       await loadData();
-      setShowModal(false);
-      setEditingItem(null);
-      setFormData({});
+      setShowDepartmentModal(false);
+      setEditingDepartment(null);
+      setDepartmentFormData({ name: '' });
     } catch (error: any) {
-      setError(error.message || 'Failed to save item');
+      setError(error.message || 'Failed to save department');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleDepartmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'dept_id' ? parseInt(value) : value
-    }));
+    setDepartmentFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Section management handlers
+  // Section handlers
   const handleAddSection = (departmentId: number) => {
     setEditingSection(null);
     setSectionFormData({ name: '', dept_id: departmentId });
@@ -144,7 +107,7 @@ export const DepartmentManagement: React.FC = () => {
 
   const handleEditSection = (section: any) => {
     setEditingSection(section);
-    setSectionFormData({ name: section.name, dept_id: section.dept_id });
+    setSectionFormData({ name: section.name, dept_id: section.dept_id || 0 });
     setShowSectionModal(true);
   };
 
@@ -168,9 +131,15 @@ export const DepartmentManagement: React.FC = () => {
 
     try {
       if (editingSection) {
-        await sectionAPI.update(editingSection.section_id, sectionFormData);
+        await sectionAPI.update(editingSection.section_id, { 
+          name: sectionFormData.name, 
+          dept_id: sectionFormData.dept_id 
+        });
       } else {
-        await sectionAPI.create(sectionFormData);
+        await sectionAPI.create({ 
+          name: sectionFormData.name, 
+          dept_id: sectionFormData.dept_id 
+        });
       }
       
       await loadData();
@@ -189,44 +158,13 @@ export const DepartmentManagement: React.FC = () => {
     setSectionFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const getCurrentData = () => {
-    switch (activeTab) {
-      case 'departments':
-        return departments;
-      case 'sections':
-        return sections;
-      default:
-        return [];
-    }
+  // Helper function to get sections for a specific department
+  const getSectionsForDepartment = (departmentId: number) => {
+    // Filter sections that belong to this specific department
+    return sections.filter(section => section.dept_id === departmentId);
   };
 
-  const getItemId = (item: any) => {
-    switch (activeTab) {
-      case 'departments':
-        return item.dept_id;
-      case 'sections':
-        return item.section_id;
-      default:
-        return 0;
-    }
-  };
-
-  const getItemName = (item: any) => {
-    return item.name || '';
-  };
-
-  const getTabTitle = () => {
-    switch (activeTab) {
-      case 'departments':
-        return 'Departments';
-      case 'sections':
-        return 'Sections';
-      default:
-        return '';
-    }
-  };
-
-  if (loading && getCurrentData().length === 0) {
+  if (loading && departments.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-lg">Loading...</div>
@@ -242,203 +180,120 @@ export const DepartmentManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.key
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Add Button */}
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-900">{getTabTitle()}</h2>
-        <Button onClick={handleAdd}>
-          Add {getTabTitle().slice(0, -1)}
+        <h2 className="text-xl font-semibold text-gray-900">Departments</h2>
+        <Button onClick={handleAddDepartment}>
+          Add Department
         </Button>
       </div>
 
-      {/* Dynamic Content */}
-      {activeTab === 'departments' && departments.length > 0 && (
+      {/* Departments Cards View */}
+      {departments.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {departments.map((dept) => {
-            const deptSections = sections.filter(section => section.dept_id === dept.dept_id);
+          {departments.map((department) => {
+            const departmentSections = getSectionsForDepartment(department.dept_id);
             return (
-              <Card key={dept.dept_id} className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-gray-900">{dept.name}</h3>
+              <Card key={department.dept_id} className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-3 h-3 rounded-full ${
+                      department.name === 'IT Department' ? 'bg-green-500' : 'bg-blue-500'
+                    }`}></div>
+                    <h3 className="font-semibold text-gray-900 text-lg">{department.name}</h3>
+                  </div>
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => handleEdit(dept)}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
+                      onClick={() => handleEditDepartment(department)}
+                      className="text-blue-600 hover:text-blue-800 text-sm px-2 py-1 border border-blue-600 rounded hover:bg-blue-50"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(dept.dept_id)}
-                      className="text-red-600 hover:text-red-800 text-sm"
+                      onClick={() => handleDeleteDepartment(department.dept_id)}
+                      className="text-red-600 hover:text-red-800 text-sm px-2 py-1 border border-red-600 rounded hover:bg-red-50"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
-                {deptSections.length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Sections:</p>
-                    <ul className="ml-4 list-disc text-gray-700 text-sm">
-                      {deptSections.map((section) => (
-                        <li key={section.section_id}>{section.name}</li>
-                      ))}
-                    </ul>
+                
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-sm font-medium text-gray-900">Sections</h4>
+                    <Button
+                      size="sm"
+                      onClick={() => handleAddSection(department.dept_id)}
+                    >
+                      Add Section
+                    </Button>
                   </div>
-                )}
+                  
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {departmentSections.map((section) => (
+                      <div key={section.section_id} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                        <span className="text-gray-700">{section.name}</span>
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={() => handleEditSection(section)}
+                            className="text-blue-600 hover:text-blue-800 text-xs px-1 py-0.5"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSection(section.section_id)}
+                            className="text-red-600 hover:text-red-800 text-xs px-1 py-0.5"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {departmentSections.length === 0 && (
+                      <p className="text-xs text-gray-500 italic">No sections found. Add a section to get started.</p>
+                    )}
+                  </div>
+                </div>
               </Card>
             );
           })}
         </div>
-      )}
-
-      {/* Other tabs content */}
-      {activeTab !== 'departments' && getCurrentData().length > 0 && (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="grid gap-4">
-              {getCurrentData().map((item: any) => (
-                <div key={getItemId(item)} className="flex justify-between items-center p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-medium text-gray-900">{getItemName(item)}</h3>
-                    {activeTab === 'sections' && item.department_name && (
-                      <p className="text-sm text-gray-600">Department: {item.department_name}</p>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="text-blue-600 hover:text-blue-800 text-sm px-3 py-1 border border-blue-600 rounded hover:bg-blue-50"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(getItemId(item))}
-                      className="text-red-600 hover:text-red-800 text-sm px-3 py-1 border border-red-600 rounded hover:bg-red-50"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+      ) : (
+        !loading && (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">No departments found</p>
+            <p className="text-gray-400 mt-2">Add your first department to get started</p>
           </div>
-        </div>
+        )
       )}
 
-      {getCurrentData().length === 0 && !loading && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No {activeTab} found</p>
-          <p className="text-gray-400 mt-2">Add your first {activeTab.slice(0, -1)} to get started</p>
-        </div>
-      )}
-
-      {/* Main Modal */}
+      {/* Department Modal */}
       <Modal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title={`${editingItem ? 'Edit' : 'Add'} ${getTabTitle().slice(0, -1)}`}
+        isOpen={showDepartmentModal}
+        onClose={() => setShowDepartmentModal(false)}
+        title={`${editingDepartment ? 'Edit' : 'Add'} Department`}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {activeTab === 'sections' && (
-            <div>
-              <label htmlFor="dept_id" className="block text-sm font-medium text-gray-700 mb-1">
-                Department
-              </label>
-              <Select
-                id="dept_id"
-                name="dept_id"
-                value={formData.dept_id || ''}
-                onChange={handleChange}
-                required
-                options={[
-                  { value: '', label: 'Select Department' },
-                  ...departments.map(dept => ({ value: dept.dept_id, label: dept.name }))
-                ]}
-              />
-            </div>
-          )}
-
+        <form onSubmit={handleDepartmentSubmit} className="space-y-4">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Name
+              Department Name
             </label>
             <Input
               id="name"
               name="name"
               type="text"
-              value={formData.name || ''}
-              onChange={handleChange}
+              value={departmentFormData.name}
+              onChange={handleDepartmentChange}
               required
-              placeholder="Enter name"
+              placeholder="Enter department name"
             />
           </div>
-
-          {/* Section Management for Department Edit */}
-          {activeTab === 'departments' && editingItem && (
-            <div className="border-t pt-4">
-              <div className="flex justify-between items-center mb-3">
-                <h4 className="text-lg font-medium text-gray-900">Sections</h4>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => handleAddSection(editingItem.dept_id)}
-                >
-                  Add Section
-                </Button>
-              </div>
-              
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {sections.filter(section => section.dept_id === editingItem.dept_id).map((section) => (
-                  <div key={section.section_id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span className="text-sm text-gray-700">{section.name}</span>
-                    <div className="flex space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => handleEditSection(section)}
-                        className="text-blue-600 hover:text-blue-800 text-xs"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSection(section.section_id)}
-                        className="text-red-600 hover:text-red-800 text-xs"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {sections.filter(section => section.dept_id === editingItem.dept_id).length === 0 && (
-                  <p className="text-sm text-gray-500 italic">No sections found. Add a section to get started.</p>
-                )}
-              </div>
-            </div>
-          )}
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowModal(false)}
+              onClick={() => setShowDepartmentModal(false)}
               disabled={loading}
             >
               Cancel
@@ -447,7 +302,7 @@ export const DepartmentManagement: React.FC = () => {
               type="submit"
               disabled={loading}
             >
-              {loading ? 'Saving...' : (editingItem ? 'Update' : 'Add')}
+              {loading ? 'Saving...' : (editingDepartment ? 'Update' : 'Add')}
             </Button>
           </div>
         </form>
@@ -461,11 +316,11 @@ export const DepartmentManagement: React.FC = () => {
       >
         <form onSubmit={handleSectionSubmit} className="space-y-4">
           <div>
-            <label htmlFor="sectionName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
               Section Name
             </label>
             <Input
-              id="sectionName"
+              id="title"
               name="name"
               type="text"
               value={sectionFormData.name}
@@ -496,3 +351,4 @@ export const DepartmentManagement: React.FC = () => {
     </div>
   );
 };
+
