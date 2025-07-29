@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Dashboard } from '../dashboard/Dashboard';
 import { EmployeeList } from '../employees/EmployeeList';
 import { DepartmentManagement } from '../departments/DepartmentManagement';
+import { RoleManagement } from '../roles/RoleManagement';
 import { Settings } from '../settings/Settings';
 
 export const MainLayout: React.FC = () => {
@@ -22,7 +23,9 @@ export const MainLayout: React.FC = () => {
       case 'departments':
         return <DepartmentManagement />;
       case 'settings':
-        return <Settings />;
+        return <RoleManagement />;
+      case 'roles':
+        return <RoleManagement />;
       default:
         return <Dashboard onManageEmployees={handleManageEmployees} />;
     }

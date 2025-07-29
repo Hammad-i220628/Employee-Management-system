@@ -27,6 +27,8 @@ export interface Section {
 export interface Designation {
   desig_id: number;
   title: string;
+  role_id?: number;
+  role_name?: string;
 }
 
 export interface Role {

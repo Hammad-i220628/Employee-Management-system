@@ -1,32 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Department, Section, Designation, Role } from '../../types';
-import { departmentAPI, sectionAPI, designationAPI, roleAPI } from '../../services/api';
+import { Department, Section } from '../../types';
+import { departmentAPI, sectionAPI } from '../../services/api';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { Modal } from '../ui/Modal';
 import { Select } from '../ui/Select';
 
-type ManagementType = 'departments' | 'sections' | 'designations' | 'roles';
+type ManagementType = 'departments' | 'sections';
 
 interface FormData {
   name?: string;
-  title?: string;
   dept_id?: number;
 }
 
 export const DepartmentManagement: React.FC = () => {
   const tabs = [
     { key: 'departments', label: 'Departments' },
-    { key: 'sections', label: 'Sections' },
-    { key: 'designations', label: 'Designations' },
-    { key: 'roles', label: 'Roles' }
+    { key: 'sections', label: 'Sections' }
   ];
   const [activeTab, setActiveTab] = useState('departments');
   const [departments, setDepartments] = useState<Department[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
-  const [designations, setDesignations] = useState<Designation[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -43,17 +38,13 @@ export const DepartmentManagement: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [depts, sects, desigs, rols] = await Promise.all([
+      const [depts, sects] = await Promise.all([
         departmentAPI.getAll(),
-        sectionAPI.getAll(),
-        designationAPI.getAll(),
-        roleAPI.getAll()
+        sectionAPI.getAll()
       ]);
 
       setDepartments(depts);
       setSections(sects);
-      setDesignations(desigs);
-      setRoles(rols);
     } catch (error: any) {
       setError(error.message || 'Failed to load data');
     } finally {
@@ -71,7 +62,6 @@ export const DepartmentManagement: React.FC = () => {
     setEditingItem(item);
     setFormData({
       name: item.name,
-      title: item.title,
       dept_id: item.dept_id
     });
     setShowModal(true);
@@ -89,12 +79,6 @@ export const DepartmentManagement: React.FC = () => {
           break;
         case 'sections':
           await sectionAPI.delete(id);
-          break;
-        case 'designations':
-          await designationAPI.delete(id);
-          break;
-        case 'roles':
-          await roleAPI.delete(id);
           break;
       }
       await loadData();
@@ -128,20 +112,6 @@ export const DepartmentManagement: React.FC = () => {
               name: formData.name!, 
               dept_id: formData.dept_id! 
             });
-          }
-          break;
-        case 'designations':
-          if (editingItem) {
-            await designationAPI.update(editingItem.desig_id, { title: formData.title! });
-          } else {
-            await designationAPI.create({ title: formData.title! });
-          }
-          break;
-        case 'roles':
-          if (editingItem) {
-            await roleAPI.update(editingItem.role_id, { name: formData.name! });
-          } else {
-            await roleAPI.create({ name: formData.name! });
           }
           break;
       }
@@ -225,10 +195,6 @@ export const DepartmentManagement: React.FC = () => {
         return departments;
       case 'sections':
         return sections;
-      case 'designations':
-        return designations;
-      case 'roles':
-        return roles;
       default:
         return [];
     }
@@ -240,17 +206,13 @@ export const DepartmentManagement: React.FC = () => {
         return item.dept_id;
       case 'sections':
         return item.section_id;
-      case 'designations':
-        return item.desig_id;
-      case 'roles':
-        return item.role_id;
       default:
         return 0;
     }
   };
 
   const getItemName = (item: any) => {
-    return item.name || item.title || '';
+    return item.name || '';
   };
 
   const getTabTitle = () => {
@@ -259,10 +221,6 @@ export const DepartmentManagement: React.FC = () => {
         return 'Departments';
       case 'sections':
         return 'Sections';
-      case 'designations':
-        return 'Designations';
-      case 'roles':
-        return 'Roles';
       default:
         return '';
     }
@@ -419,17 +377,17 @@ export const DepartmentManagement: React.FC = () => {
           )}
 
           <div>
-            <label htmlFor={activeTab === 'designations' ? 'title' : 'name'} className="block text-sm font-medium text-gray-700 mb-1">
-              {activeTab === 'designations' ? 'Title' : 'Name'}
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              Name
             </label>
             <Input
-              id={activeTab === 'designations' ? 'title' : 'name'}
-              name={activeTab === 'designations' ? 'title' : 'name'}
+              id="name"
+              name="name"
               type="text"
-              value={activeTab === 'designations' ? (formData.title || '') : (formData.name || '')}
+              value={formData.name || ''}
               onChange={handleChange}
               required
-              placeholder={`Enter ${activeTab === 'designations' ? 'title' : 'name'}`}
+              placeholder="Enter name"
             />
           </div>
 

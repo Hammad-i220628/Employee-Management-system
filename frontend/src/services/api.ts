@@ -137,12 +137,12 @@ export const designationAPI = {
     return response.data;
   },
 
-  create: async (data: { title: string }): Promise<{ message: string }> => {
+  create: async (data: { title: string; role_id?: number }): Promise<{ message: string }> => {
     const response = await api.post('/departments/designations', data);
     return response.data;
   },
 
-  update: async (id: number, data: { title: string }): Promise<{ message: string }> => {
+  update: async (id: number, data: { title: string; role_id?: number }): Promise<{ message: string }> => {
     const response = await api.put(`/departments/designations/${id}`, data);
     return response.data;
   },

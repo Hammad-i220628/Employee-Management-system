@@ -168,7 +168,12 @@ const getAllDesignations = async (req, res) => {
   try {
     const pool = await getConnection();
     const result = await pool.request()
-      .query('SELECT * FROM Designations ORDER BY title');
+      .query(`
+        SELECT d.*, r.name as role_name 
+        FROM Designations d 
+        LEFT JOIN Roles r ON d.role_id = r.role_id 
+        ORDER BY d.title
+      `);
     res.json(result.recordset);
   } catch (error) {
     console.error('Get designations error:', error);
@@ -178,7 +183,7 @@ const getAllDesignations = async (req, res) => {
 
 const addDesignation = async (req, res) => {
   try {
-    const { title } = req.body;
+    const { title, role_id } = req.body;
     if (!title) {
       return res.status(400).json({ message: 'Designation title is required' });
     }
@@ -186,7 +191,8 @@ const addDesignation = async (req, res) => {
     const pool = await getConnection();
     await pool.request()
       .input('title', sql.VarChar(100), title)
-      .query('INSERT INTO Designations (title) VALUES (@title)');
+      .input('role_id', sql.Int, role_id || null)
+      .query('INSERT INTO Designations (title, role_id) VALUES (@title, @role_id)');
 
     res.status(201).json({ message: 'Designation added successfully' });
   } catch (error) {
@@ -198,7 +204,7 @@ const addDesignation = async (req, res) => {
 const updateDesignation = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title } = req.body;
+    const { title, role_id } = req.body;
     
     if (!title) {
       return res.status(400).json({ message: 'Designation title is required' });
@@ -208,7 +214,8 @@ const updateDesignation = async (req, res) => {
     const result = await pool.request()
       .input('desig_id', sql.Int, id)
       .input('title', sql.VarChar(100), title)
-      .query('UPDATE Designations SET title = @title WHERE desig_id = @desig_id');
+      .input('role_id', sql.Int, role_id || null)
+      .query('UPDATE Designations SET title = @title, role_id = @role_id WHERE desig_id = @desig_id');
 
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ message: 'Designation not found' });

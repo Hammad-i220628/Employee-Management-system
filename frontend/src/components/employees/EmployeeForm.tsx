@@ -152,6 +152,11 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear designation when role changes
+    if (name === 'role_id') {
+      setFormData(prev => ({ ...prev, desig_id: '' }));
+    }
   };
 
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -167,6 +172,12 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
     return sections.filter(section => section.dept_id === Number(selectedDepartment));
   };
 
+  // Filter designations based on selected role
+  const getFilteredDesignations = () => {
+    if (!formData.role_id) return [];
+    return designations.filter(designation => designation.role_id === Number(formData.role_id));
+  };
+
   const isFixedEmployee = employee?.type === 'fixed';
 
   // Dynamic options based on API data
@@ -180,7 +191,9 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
     label: role.name 
   }));
 
-  const designationOptions = designations.map(designation => ({ 
+  // Use filtered designations based on selected role
+  const filteredDesignations = getFilteredDesignations();
+  const designationOptions = filteredDesignations.map(designation => ({ 
     value: designation.desig_id, 
     label: designation.title 
   }));
@@ -310,8 +323,15 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
                 value={formData.desig_id}
                 onChange={handleChange}
                 required
+                disabled={!formData.role_id}
                 options={designationOptions}
               />
+              {!formData.role_id && (
+                <p className="text-xs text-gray-500 mt-1">Please select a role first</p>
+              )}
+              {formData.role_id && filteredDesignations.length === 0 && (
+                <p className="text-xs text-orange-600 mt-1">No designations available for this role</p>
+              )}
             </div>
           </>
         )}
