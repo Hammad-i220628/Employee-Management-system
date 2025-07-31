@@ -39,7 +39,13 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
-    return Promise.reject(error);
+    
+    // Enhance error message for better user experience
+    const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
+    const enhancedError = new Error(errorMessage);
+    enhancedError.response = error.response;
+    
+    return Promise.reject(enhancedError);
   }
 );
 
@@ -78,7 +84,7 @@ export const employeeAPI = {
     return response.data;
   },
 
-  delete: async (id: number): Promise<{ message: string }> => {
+  delete: async (id: number | string): Promise<{ message: string }> => {
     const response = await api.delete(`/employees/${id}`);
     return response.data;
   },

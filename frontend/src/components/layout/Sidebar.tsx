@@ -1,5 +1,6 @@
 import React from 'react';
-import { Users, Building, Settings, BarChart3, Award } from 'lucide-react';
+import { Users, Building, Settings, BarChart3, Award, User } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
   activeTab: string;
@@ -7,12 +8,21 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
-  const menuItems = [
+  const { user } = useAuth();
+  
+  // Define different menu items based on user role
+  const adminMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'employees', label: 'Employees', icon: Users },
     { id: 'departments', label: 'Department & Sections', icon: Building },
     { id: 'settings', label: 'Roles & Designation', icon: Award }
   ];
+  
+  const employeeMenuItems = [
+    { id: 'dashboard', label: 'My Profile', icon: User }
+  ];
+  
+  const menuItems = user?.role === 'Employee' ? employeeMenuItems : adminMenuItems;
 
   return (
     <div className="w-64 bg-white shadow-sm border-r border-gray-200 h-full">

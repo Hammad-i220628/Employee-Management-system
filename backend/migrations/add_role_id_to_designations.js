@@ -1,3 +1,5 @@
+// Set the correct path for config.env
+require('dotenv').config({ path: '../config.env' });
 const { getConnection, sql } = require('../db/connection');
 
 async function addRoleIdToDesignations() {

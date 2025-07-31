@@ -16,6 +16,8 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
     name: '',
     cnic: '',
     start_date: '',
+    email: '',
+    password: '',
     section_id: '',
     desig_id: '',
     role_id: '',
@@ -79,9 +81,9 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
 
     // Validate required fields based on whether adding new or editing existing employee
     if (!employee) {
-      // For new employees, only validate name, cnic, and start_date
-      if (!formData.name || !formData.cnic || !formData.start_date) {
-        setError('Please fill in all fields.');
+      // For new employees, validate name, cnic, start_date, email, and password
+      if (!formData.name || !formData.cnic || !formData.start_date || !formData.email || !formData.password) {
+        setError('Please fill in all required fields.');
         setLoading(false);
         return;
       }
@@ -132,11 +134,13 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
           await employeeAPI.update(employee.emp_id, updatePayload);
         }
       } else {
-        // For new employees, only send basic details
+        // For new employees, send all details including email and password
         const createPayload = {
           name: formData.name,
           cnic: formData.cnic,
-          start_date: formData.start_date
+          start_date: formData.start_date,
+          email: formData.email,
+          password: formData.password
         };
         console.log('Creating employee payload:', createPayload);
         await employeeAPI.create(createPayload);
@@ -247,7 +251,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
           )}
         </div>
 
-        <div className={!employee ? "md:col-span-2" : ""}>
+        <div>
           <label htmlFor="start_date" className="block text-sm font-medium text-gray-700 mb-1">
             Starting Date
           </label>
@@ -266,6 +270,41 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
             <p className="text-xs text-gray-500 mt-1">Starting date cannot be changed</p>
           )}
         </div>
+
+        {/* Email and Password fields only for new employees */}
+        {!employee && (
+          <>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder="Enter employee email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="Enter password for employee login"
+              />
+            </div>
+          </>
+        )}
 
         {/* Only show editable fields when editing an employee */}
         {employee && (

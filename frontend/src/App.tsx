@@ -6,14 +6,7 @@ import { Dashboard } from './components/dashboard/Dashboard';
 import { EmployeeList } from './components/employees/EmployeeList';
 import { DepartmentManagement } from './components/departments/DepartmentManagement';
 import { Settings } from './components/settings/Settings';
-
-// Placeholder EmployeeDashboard (can be replaced with a real one)
-const EmployeeDashboard: React.FC = () => (
-  <div className="p-8">
-    <h2 className="text-2xl font-bold mb-4">Employee Dashboard</h2>
-    <p>Welcome! You can view and update your own data here.</p>
-  </div>
-);
+import { EmployeeDashboard } from './components/dashboard/EmployeeDashboard';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -38,7 +31,13 @@ const AppContent: React.FC = () => {
     return <MainLayout />; // Use MainLayout for admin
   }
   if (user?.role === 'Employee') {
-    return <EmployeeDashboard />;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <EmployeeDashboard />
+        </div>
+      </div>
+    );
   }
 
   // Default fallback

@@ -2,19 +2,28 @@ import React, { useState } from 'react';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { Dashboard } from '../dashboard/Dashboard';
+import { EmployeeDashboard } from '../dashboard/EmployeeDashboard';
 import { EmployeeList } from '../employees/EmployeeList';
 import { DepartmentManagement } from '../departments/DepartmentManagement';
 import { RoleManagement } from '../roles/RoleManagement';
 import { Settings } from '../settings/Settings';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const MainLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { user } = useAuth();
 
   const handleManageEmployees = () => {
     setActiveTab('employees');
   };
 
   const renderContent = () => {
+    // For employees, show only the employee dashboard
+    if (user?.role === 'Employee') {
+      return <EmployeeDashboard />;
+    }
+
+    // For admins, show full functionality
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard onManageEmployees={handleManageEmployees} />;

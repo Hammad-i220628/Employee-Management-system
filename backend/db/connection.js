@@ -9,7 +9,9 @@ const config = {
   port: 1433,
   options: {
     encrypt: false,
-    trustServerCertificate: true
+    trustServerCertificate: true,
+    enableArithAbort: true,
+    abortTransactionOnError: true
   },
   pool: {
     max: 10,
@@ -27,6 +29,7 @@ const getConnection = async () => {
     }
     pool = await sql.connect(config);
     console.log('Connected to SQL Server');
+    
     return pool;
   } catch (error) {
     console.error('Database connection error:', error);

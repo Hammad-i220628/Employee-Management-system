@@ -63,18 +63,78 @@ const deleteDepartment = async (req, res) => {
     const { id } = req.params;
     const pool = await getConnection();
     
-    const result = await pool.request()
+    // Check if department exists
+    const deptCheck = await pool.request()
       .input('dept_id', sql.Int, id)
-      .query('DELETE FROM Departments WHERE dept_id = @dept_id');
-
-    if (result.rowsAffected[0] === 0) {
+      .query('SELECT dept_id FROM Departments WHERE dept_id = @dept_id');
+    
+    if (deptCheck.recordset.length === 0) {
       return res.status(404).json({ message: 'Department not found' });
     }
-
-    res.json({ message: 'Department deleted successfully' });
+    
+    // Start transaction for safe deletion
+    const transaction = new sql.Transaction(pool);
+    
+    try {
+      await transaction.begin();
+      
+      // Get all sections in this department
+      const sectionsResult = await transaction.request()
+        .input('dept_id', sql.Int, id)
+        .query('SELECT section_id FROM Sections WHERE dept_id = @dept_id');
+      
+      // For each section, delete employees and their related records
+      for (const section of sectionsResult.recordset) {
+        // Get all employees in this section
+        const employeesResult = await transaction.request()
+          .input('section_id', sql.Int, section.section_id)
+          .query('SELECT emp_id, emp_det_id FROM Employees WHERE section_id = @section_id');
+        
+        // Delete employees and their related records
+        for (const employee of employeesResult.recordset) {
+          // Delete from LeaveApplications first
+          await transaction.request()
+            .input('emp_id', sql.Int, employee.emp_id)
+            .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
+          
+          // Delete from Employees table
+          await transaction.request()
+            .input('emp_id', sql.Int, employee.emp_id)
+            .query('DELETE FROM Employees WHERE emp_id = @emp_id');
+          
+          // Delete from EmployeeDetails table
+          await transaction.request()
+            .input('emp_det_id', sql.Int, employee.emp_det_id)
+            .query('DELETE FROM EmployeeDetails WHERE emp_det_id = @emp_det_id');
+        }
+        
+        // Delete the section
+        await transaction.request()
+          .input('section_id', sql.Int, section.section_id)
+          .query('DELETE FROM Sections WHERE section_id = @section_id');
+      }
+      
+      // Finally delete the department
+      const result = await transaction.request()
+        .input('dept_id', sql.Int, id)
+        .query('DELETE FROM Departments WHERE dept_id = @dept_id');
+      
+      // Commit the transaction
+      await transaction.commit();
+      
+      res.json({ message: 'Department and all related records deleted successfully' });
+    } catch (transactionError) {
+      // Rollback the transaction in case of error
+      await transaction.rollback();
+      throw transactionError;
+    }
   } catch (error) {
     console.error('Delete department error:', error);
-    res.status(500).json({ message: 'Server error' });
+    if (error.number === 547) { // Foreign key constraint error
+      res.status(400).json({ message: 'Cannot delete department due to existing dependencies' });
+    } else {
+      res.status(500).json({ message: 'Server error: ' + error.message });
+    }
   }
 };
 
@@ -148,18 +208,65 @@ const deleteSection = async (req, res) => {
     const { id } = req.params;
     const pool = await getConnection();
     
-    const result = await pool.request()
+    // Check if section exists
+    const sectionCheck = await pool.request()
       .input('section_id', sql.Int, id)
-      .query('DELETE FROM Sections WHERE section_id = @section_id');
-
-    if (result.rowsAffected[0] === 0) {
+      .query('SELECT section_id FROM Sections WHERE section_id = @section_id');
+    
+    if (sectionCheck.recordset.length === 0) {
       return res.status(404).json({ message: 'Section not found' });
     }
-
-    res.json({ message: 'Section deleted successfully' });
+    
+    // Start transaction for safe deletion
+    const transaction = new sql.Transaction(pool);
+    
+    try {
+      await transaction.begin();
+      
+      // Get all employees in this section
+      const employeesResult = await transaction.request()
+        .input('section_id', sql.Int, id)
+        .query('SELECT emp_id, emp_det_id FROM Employees WHERE section_id = @section_id');
+      
+      // Delete employees and their related records
+      for (const employee of employeesResult.recordset) {
+        // Delete from LeaveApplications first
+        await transaction.request()
+          .input('emp_id', sql.Int, employee.emp_id)
+          .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
+        
+        // Delete from Employees table
+        await transaction.request()
+          .input('emp_id', sql.Int, employee.emp_id)
+          .query('DELETE FROM Employees WHERE emp_id = @emp_id');
+        
+        // Delete from EmployeeDetails table
+        await transaction.request()
+          .input('emp_det_id', sql.Int, employee.emp_det_id)
+          .query('DELETE FROM EmployeeDetails WHERE emp_det_id = @emp_det_id');
+      }
+      
+      // Delete the section
+      const result = await transaction.request()
+        .input('section_id', sql.Int, id)
+        .query('DELETE FROM Sections WHERE section_id = @section_id');
+      
+      // Commit the transaction
+      await transaction.commit();
+      
+      res.json({ message: 'Section and all related employees deleted successfully' });
+    } catch (transactionError) {
+      // Rollback the transaction in case of error
+      await transaction.rollback();
+      throw transactionError;
+    }
   } catch (error) {
     console.error('Delete section error:', error);
-    res.status(500).json({ message: 'Server error' });
+    if (error.number === 547) { // Foreign key constraint error
+      res.status(400).json({ message: 'Cannot delete section due to existing dependencies' });
+    } else {
+      res.status(500).json({ message: 'Server error: ' + error.message });
+    }
   }
 };
 

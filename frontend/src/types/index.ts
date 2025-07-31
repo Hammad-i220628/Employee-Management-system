@@ -42,6 +42,7 @@ export interface Employee {
   name: string;
   cnic: string;
   start_date: string;
+  email?: string;
   type: 'fixed' | 'editable';
   status: string;
   section_id: number;
@@ -59,6 +60,8 @@ export interface EmployeeFormData {
   name: string;
   cnic: string;
   start_date: string;
+  email?: string; // Optional, used when creating new employees
+  password?: string; // Optional, used when creating new employees
   section_id: string;
   desig_id: string;
   role_id: string;
