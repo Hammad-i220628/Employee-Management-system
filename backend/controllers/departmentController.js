@@ -92,10 +92,10 @@ const deleteDepartment = async (req, res) => {
         
         // Delete employees and their related records
         for (const employee of employeesResult.recordset) {
-          // Delete from LeaveApplications first
+          // Delete from TblAttendance first (if exists)
           await transaction.request()
             .input('emp_id', sql.Int, employee.emp_id)
-            .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
+            .query('DELETE FROM TblAttendance WHERE emp_id = @emp_id');
           
           // Delete from TblEmpM table
           await transaction.request()
@@ -230,10 +230,10 @@ const deleteSection = async (req, res) => {
       
       // Delete employees and their related records
       for (const employee of employeesResult.recordset) {
-        // Delete from LeaveApplications first
+        // Delete from TblAttendance first (if exists)
         await transaction.request()
           .input('emp_id', sql.Int, employee.emp_id)
-          .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
+          .query('DELETE FROM TblAttendance WHERE emp_id = @emp_id');
         
         // Delete from TblEmpM table
         await transaction.request()
@@ -362,10 +362,10 @@ const deleteDesignation = async (req, res) => {
       
       // Delete employees and their related records
       for (const employee of employeesResult.recordset) {
-        // Delete from LeaveApplications first (if exists)
+        // Delete from TblAttendance first (if exists)
         await transaction.request()
           .input('emp_id', sql.Int, employee.emp_id)
-          .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
+          .query('DELETE FROM TblAttendance WHERE emp_id = @emp_id');
         
         // Delete from TblEmpM table
         await transaction.request()
@@ -494,10 +494,10 @@ const deleteRole = async (req, res) => {
         
         // Delete employees and their related records
         for (const employee of employeesResult.recordset) {
-          // Delete from LeaveApplications first (if exists)
+          // Delete from TblAttendance first (if exists)
           await transaction.request()
             .input('emp_id', sql.Int, employee.emp_id)
-            .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
+            .query('DELETE FROM TblAttendance WHERE emp_id = @emp_id');
           
           // Delete from TblEmpM table
           await transaction.request()

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
-import { User, Calendar, Building, Mail, Briefcase, Badge } from 'lucide-react';
+import { Button } from '../ui/Button';
+import { User, Calendar, Building, Mail, Briefcase, Badge, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface EmployeeData {
@@ -19,7 +20,7 @@ export const EmployeeDashboard: React.FC = () => {
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     loadEmployeeData();
@@ -54,7 +55,7 @@ export const EmployeeDashboard: React.FC = () => {
       case 'changed':
         return `${baseClasses} bg-green-100 text-green-800`;
       case 'unassigned':
-        return `${baseClasses} bg-orange-100 text-orange-800`;
+        return `${baseClasses} bg-gray-100 text-gray-800`;
       default:
         return `${baseClasses} bg-gray-100 text-gray-800`;
     }
@@ -100,14 +101,25 @@ export const EmployeeDashboard: React.FC = () => {
     <div className="space-y-6">
       {/* Welcome Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl p-8 shadow-xl">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg">
-            <User className="w-10 h-10 text-blue-600" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg">
+              <User className="w-10 h-10 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Welcome, {employeeData.name}</h1>
+              <p className="text-blue-100 text-lg">Here's your employee information</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-white">Welcome, {employeeData.name}</h1>
-            <p className="text-blue-100 text-lg">Here's your employee information</p>
-          </div>
+          <Button
+            onClick={logout}
+            variant="secondary"
+            size="sm"
+            className="bg-white/20 hover:bg-white/30 text-white border-white/30 hover:border-white/40"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
         </div>
       </div>
 

@@ -132,7 +132,7 @@ export const EmployeeList: React.FC = () => {
                   <span className={getStatusBadge(employee.status)}>
                     {employee.status === 'changed' ? 'active' : employee.status}
                   </span>
-                  {employee.type !== 'editable' && (
+                  {employee.type !== 'editable' && employee.type !== 'unassigned' && (
                     <span className={getTypeBadge(employee.type)}>
                       {employee.type}
                     </span>
