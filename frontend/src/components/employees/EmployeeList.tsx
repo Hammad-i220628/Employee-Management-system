@@ -67,7 +67,7 @@ export const EmployeeList: React.FC = () => {
       case 'active':
         return `${baseClasses} bg-green-100 text-green-800`;
       case 'changed':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
+        return `${baseClasses} bg-green-100 text-green-800`;
       default:
         return `${baseClasses} bg-gray-100 text-gray-800`;
     }
@@ -111,19 +111,32 @@ export const EmployeeList: React.FC = () => {
       )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {employees.filter(employee => employee.role_name !== 'Admin').map((employee) => (
+        {employees.map((employee) => (
           <Card key={employee.emp_id === 0 ? `unassigned-${employee.emp_det_id}` : employee.emp_id} className="p-6">
             <div className="space-y-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{employee.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-gray-900">{employee.name}</h3>
+                    {(employee.email === 'admin@gmail.com' || employee.cnic === '00000-0000000-0' || employee.type === 'fixed') && (
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                        ADMIN
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-600">CNIC: {employee.cnic}</p>
+                  <p className="text-sm text-gray-600">Email: {employee.email}</p>
                   <p className="text-sm text-gray-600">Started: {new Date(employee.start_date).toLocaleDateString()}</p>
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className={getStatusBadge(employee.status)}>
-                    {employee.status}
+                    {employee.status === 'changed' ? 'active' : employee.status}
                   </span>
+                  {employee.type !== 'editable' && (
+                    <span className={getTypeBadge(employee.type)}>
+                      {employee.type}
+                    </span>
+                  )}
                 </div>
               </div>
 

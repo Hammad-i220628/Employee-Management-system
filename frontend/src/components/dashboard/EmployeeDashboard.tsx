@@ -52,7 +52,7 @@ export const EmployeeDashboard: React.FC = () => {
       case 'active':
         return `${baseClasses} bg-green-100 text-green-800`;
       case 'changed':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
+        return `${baseClasses} bg-green-100 text-green-800`;
       case 'unassigned':
         return `${baseClasses} bg-orange-100 text-orange-800`;
       default:
@@ -117,7 +117,7 @@ export const EmployeeDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">Employee Details</h2>
             <span className={getStatusBadge(employeeData.status)}>
-              {employeeData.status}
+              {employeeData.status === 'Changed' ? 'Active' : employeeData.status}
             </span>
           </div>
         </CardHeader>
@@ -177,7 +177,7 @@ export const EmployeeDashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                 <span className="text-sm font-medium text-gray-600">Employment Status</span>
-                <span className="font-semibold text-blue-600">{employeeData.status}</span>
+                <span className="font-semibold text-blue-600">{employeeData.status === 'Changed' ? 'Active' : employeeData.status}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                 <span className="text-sm font-medium text-gray-600">Days Since Joining</span>

@@ -17,7 +17,10 @@ const register = async (req, res) => {
       .input('email', sql.VarChar(100), email)
       .input('password_hash', sql.VarChar(255), passwordHash)
       .input('role', sql.VarChar(20), userRole)
-      .execute('sp_RegisterUser');
+      .query(`
+        INSERT INTO TblUsers (username, email, password_hash, role)
+        VALUES (@username, @email, @password_hash, @role)
+      `);
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
     if (error.number === 2627) {
@@ -40,7 +43,7 @@ const login = async (req, res) => {
     const result = await pool.request()
       .input('username', sql.VarChar(50), username)
       .input('email', sql.VarChar(100), username)
-      .query(`SELECT * FROM Users WHERE username = @username OR email = @email`);
+      .query(`SELECT * FROM TblUsers WHERE username = @username OR email = @email`);
     console.log('User from DB:', result.recordset[0]);
     if (result.recordset.length === 0) {
       console.log('No user found');

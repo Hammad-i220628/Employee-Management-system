@@ -5,7 +5,7 @@ const getAllDepartments = async (req, res) => {
   try {
     const pool = await getConnection();
     const result = await pool.request()
-      .query('SELECT * FROM Departments ORDER BY name');
+      .query('SELECT * FROM TblDepartments ORDER BY name');
     res.json(result.recordset);
   } catch (error) {
     console.error('Get departments error:', error);
@@ -23,7 +23,7 @@ const addDepartment = async (req, res) => {
     const pool = await getConnection();
     await pool.request()
       .input('name', sql.VarChar(100), name)
-      .query('INSERT INTO Departments (name) VALUES (@name)');
+      .query('INSERT INTO TblDepartments (name) VALUES (@name)');
 
     res.status(201).json({ message: 'Department added successfully' });
   } catch (error) {
@@ -45,7 +45,7 @@ const updateDepartment = async (req, res) => {
     const result = await pool.request()
       .input('dept_id', sql.Int, id)
       .input('name', sql.VarChar(100), name)
-      .query('UPDATE Departments SET name = @name WHERE dept_id = @dept_id');
+      .query('UPDATE TblDepartments SET name = @name WHERE dept_id = @dept_id');
 
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ message: 'Department not found' });
@@ -66,7 +66,7 @@ const deleteDepartment = async (req, res) => {
     // Check if department exists
     const deptCheck = await pool.request()
       .input('dept_id', sql.Int, id)
-      .query('SELECT dept_id FROM Departments WHERE dept_id = @dept_id');
+      .query('SELECT dept_id FROM TblDepartments WHERE dept_id = @dept_id');
     
     if (deptCheck.recordset.length === 0) {
       return res.status(404).json({ message: 'Department not found' });
@@ -81,14 +81,14 @@ const deleteDepartment = async (req, res) => {
       // Get all sections in this department
       const sectionsResult = await transaction.request()
         .input('dept_id', sql.Int, id)
-        .query('SELECT section_id FROM Sections WHERE dept_id = @dept_id');
+        .query('SELECT section_id FROM TblSections WHERE dept_id = @dept_id');
       
       // For each section, delete employees and their related records
       for (const section of sectionsResult.recordset) {
         // Get all employees in this section
         const employeesResult = await transaction.request()
           .input('section_id', sql.Int, section.section_id)
-          .query('SELECT emp_id, emp_det_id FROM Employees WHERE section_id = @section_id');
+          .query('SELECT emp_id, emp_det_id FROM TblEmpM WHERE section_id = @section_id');
         
         // Delete employees and their related records
         for (const employee of employeesResult.recordset) {
@@ -97,27 +97,27 @@ const deleteDepartment = async (req, res) => {
             .input('emp_id', sql.Int, employee.emp_id)
             .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
           
-          // Delete from Employees table
+          // Delete from TblEmpM table
           await transaction.request()
             .input('emp_id', sql.Int, employee.emp_id)
-            .query('DELETE FROM Employees WHERE emp_id = @emp_id');
+            .query('DELETE FROM TblEmpM WHERE emp_id = @emp_id');
           
-          // Delete from EmployeeDetails table
+          // Delete from TblEmpS table
           await transaction.request()
             .input('emp_det_id', sql.Int, employee.emp_det_id)
-            .query('DELETE FROM EmployeeDetails WHERE emp_det_id = @emp_det_id');
+            .query('DELETE FROM TblEmpS WHERE emp_det_id = @emp_det_id');
         }
         
         // Delete the section
         await transaction.request()
           .input('section_id', sql.Int, section.section_id)
-          .query('DELETE FROM Sections WHERE section_id = @section_id');
+          .query('DELETE FROM TblSections WHERE section_id = @section_id');
       }
       
       // Finally delete the department
       const result = await transaction.request()
         .input('dept_id', sql.Int, id)
-        .query('DELETE FROM Departments WHERE dept_id = @dept_id');
+        .query('DELETE FROM TblDepartments WHERE dept_id = @dept_id');
       
       // Commit the transaction
       await transaction.commit();
@@ -145,8 +145,8 @@ const getAllSections = async (req, res) => {
     const result = await pool.request()
       .query(`
         SELECT s.*, d.name as department_name 
-        FROM Sections s 
-        JOIN Departments d ON s.dept_id = d.dept_id 
+        FROM TblSections s 
+        JOIN TblDepartments d ON s.dept_id = d.dept_id 
         ORDER BY s.name
       `);
     res.json(result.recordset);
@@ -167,7 +167,7 @@ const addSection = async (req, res) => {
     await pool.request()
       .input('name', sql.VarChar(100), name)
       .input('dept_id', sql.Int, dept_id)
-      .query('INSERT INTO Sections (name, dept_id) VALUES (@name, @dept_id)');
+      .query('INSERT INTO TblSections (name, dept_id) VALUES (@name, @dept_id)');
 
     res.status(201).json({ message: 'Section added successfully' });
   } catch (error) {
@@ -190,7 +190,7 @@ const updateSection = async (req, res) => {
       .input('section_id', sql.Int, id)
       .input('name', sql.VarChar(100), name)
       .input('dept_id', sql.Int, dept_id)
-      .query('UPDATE Sections SET name = @name, dept_id = @dept_id WHERE section_id = @section_id');
+      .query('UPDATE TblSections SET name = @name, dept_id = @dept_id WHERE section_id = @section_id');
 
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ message: 'Section not found' });
@@ -211,7 +211,7 @@ const deleteSection = async (req, res) => {
     // Check if section exists
     const sectionCheck = await pool.request()
       .input('section_id', sql.Int, id)
-      .query('SELECT section_id FROM Sections WHERE section_id = @section_id');
+      .query('SELECT section_id FROM TblSections WHERE section_id = @section_id');
     
     if (sectionCheck.recordset.length === 0) {
       return res.status(404).json({ message: 'Section not found' });
@@ -226,7 +226,7 @@ const deleteSection = async (req, res) => {
       // Get all employees in this section
       const employeesResult = await transaction.request()
         .input('section_id', sql.Int, id)
-        .query('SELECT emp_id, emp_det_id FROM Employees WHERE section_id = @section_id');
+        .query('SELECT emp_id, emp_det_id FROM TblEmpM WHERE section_id = @section_id');
       
       // Delete employees and their related records
       for (const employee of employeesResult.recordset) {
@@ -235,21 +235,21 @@ const deleteSection = async (req, res) => {
           .input('emp_id', sql.Int, employee.emp_id)
           .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
         
-        // Delete from Employees table
+        // Delete from TblEmpM table
         await transaction.request()
           .input('emp_id', sql.Int, employee.emp_id)
-          .query('DELETE FROM Employees WHERE emp_id = @emp_id');
+          .query('DELETE FROM TblEmpM WHERE emp_id = @emp_id');
         
-        // Delete from EmployeeDetails table
+        // Delete from TblEmpS table
         await transaction.request()
           .input('emp_det_id', sql.Int, employee.emp_det_id)
-          .query('DELETE FROM EmployeeDetails WHERE emp_det_id = @emp_det_id');
+          .query('DELETE FROM TblEmpS WHERE emp_det_id = @emp_det_id');
       }
       
       // Delete the section
       const result = await transaction.request()
         .input('section_id', sql.Int, id)
-        .query('DELETE FROM Sections WHERE section_id = @section_id');
+        .query('DELETE FROM TblSections WHERE section_id = @section_id');
       
       // Commit the transaction
       await transaction.commit();
@@ -277,8 +277,8 @@ const getAllDesignations = async (req, res) => {
     const result = await pool.request()
       .query(`
         SELECT d.*, r.name as role_name 
-        FROM Designations d 
-        LEFT JOIN Roles r ON d.role_id = r.role_id 
+        FROM TblDesignations d 
+        LEFT JOIN TblRoles r ON d.role_id = r.role_id 
         ORDER BY d.title
       `);
     res.json(result.recordset);
@@ -299,7 +299,7 @@ const addDesignation = async (req, res) => {
     await pool.request()
       .input('title', sql.VarChar(100), title)
       .input('role_id', sql.Int, role_id || null)
-      .query('INSERT INTO Designations (title, role_id) VALUES (@title, @role_id)');
+      .query('INSERT INTO TblDesignations (title, role_id) VALUES (@title, @role_id)');
 
     res.status(201).json({ message: 'Designation added successfully' });
   } catch (error) {
@@ -322,7 +322,7 @@ const updateDesignation = async (req, res) => {
       .input('desig_id', sql.Int, id)
       .input('title', sql.VarChar(100), title)
       .input('role_id', sql.Int, role_id || null)
-      .query('UPDATE Designations SET title = @title, role_id = @role_id WHERE desig_id = @desig_id');
+      .query('UPDATE TblDesignations SET title = @title, role_id = @role_id WHERE desig_id = @desig_id');
 
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ message: 'Designation not found' });
@@ -340,18 +340,65 @@ const deleteDesignation = async (req, res) => {
     const { id } = req.params;
     const pool = await getConnection();
     
-    const result = await pool.request()
+    // Check if designation exists
+    const designationCheck = await pool.request()
       .input('desig_id', sql.Int, id)
-      .query('DELETE FROM Designations WHERE desig_id = @desig_id');
-
-    if (result.rowsAffected[0] === 0) {
+      .query('SELECT desig_id FROM TblDesignations WHERE desig_id = @desig_id');
+    
+    if (designationCheck.recordset.length === 0) {
       return res.status(404).json({ message: 'Designation not found' });
     }
-
-    res.json({ message: 'Designation deleted successfully' });
+    
+    // Start transaction for safe deletion
+    const transaction = new sql.Transaction(pool);
+    
+    try {
+      await transaction.begin();
+      
+      // Get all employees with this designation
+      const employeesResult = await transaction.request()
+        .input('desig_id', sql.Int, id)
+        .query('SELECT emp_id, emp_det_id FROM TblEmpM WHERE desig_id = @desig_id');
+      
+      // Delete employees and their related records
+      for (const employee of employeesResult.recordset) {
+        // Delete from LeaveApplications first (if exists)
+        await transaction.request()
+          .input('emp_id', sql.Int, employee.emp_id)
+          .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
+        
+        // Delete from TblEmpM table
+        await transaction.request()
+          .input('emp_id', sql.Int, employee.emp_id)
+          .query('DELETE FROM TblEmpM WHERE emp_id = @emp_id');
+        
+        // Delete from TblEmpS table
+        await transaction.request()
+          .input('emp_det_id', sql.Int, employee.emp_det_id)
+          .query('DELETE FROM TblEmpS WHERE emp_det_id = @emp_det_id');
+      }
+      
+      // Delete the designation
+      const result = await transaction.request()
+        .input('desig_id', sql.Int, id)
+        .query('DELETE FROM TblDesignations WHERE desig_id = @desig_id');
+      
+      // Commit the transaction
+      await transaction.commit();
+      
+      res.json({ message: 'Designation and all related employees deleted successfully' });
+    } catch (transactionError) {
+      // Rollback the transaction in case of error
+      await transaction.rollback();
+      throw transactionError;
+    }
   } catch (error) {
     console.error('Delete designation error:', error);
-    res.status(500).json({ message: 'Server error' });
+    if (error.number === 547) { // Foreign key constraint error
+      res.status(400).json({ message: 'Cannot delete designation due to existing dependencies' });
+    } else {
+      res.status(500).json({ message: 'Server error: ' + error.message });
+    }
   }
 };
 
@@ -360,7 +407,7 @@ const getAllRoles = async (req, res) => {
   try {
     const pool = await getConnection();
     const result = await pool.request()
-      .query('SELECT * FROM Roles ORDER BY name');
+      .query('SELECT * FROM TblRoles ORDER BY name');
     res.json(result.recordset);
   } catch (error) {
     console.error('Get roles error:', error);
@@ -378,7 +425,7 @@ const addRole = async (req, res) => {
     const pool = await getConnection();
     await pool.request()
       .input('name', sql.VarChar(100), name)
-      .query('INSERT INTO Roles (name) VALUES (@name)');
+      .query('INSERT INTO TblRoles (name) VALUES (@name)');
 
     res.status(201).json({ message: 'Role added successfully' });
   } catch (error) {
@@ -400,7 +447,7 @@ const updateRole = async (req, res) => {
     const result = await pool.request()
       .input('role_id', sql.Int, id)
       .input('name', sql.VarChar(100), name)
-      .query('UPDATE Roles SET name = @name WHERE role_id = @role_id');
+      .query('UPDATE TblRoles SET name = @name WHERE role_id = @role_id');
 
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ message: 'Role not found' });
@@ -418,18 +465,78 @@ const deleteRole = async (req, res) => {
     const { id } = req.params;
     const pool = await getConnection();
     
-    const result = await pool.request()
+    // Check if role exists
+    const roleCheck = await pool.request()
       .input('role_id', sql.Int, id)
-      .query('DELETE FROM Roles WHERE role_id = @role_id');
-
-    if (result.rowsAffected[0] === 0) {
+      .query('SELECT role_id FROM TblRoles WHERE role_id = @role_id');
+    
+    if (roleCheck.recordset.length === 0) {
       return res.status(404).json({ message: 'Role not found' });
     }
-
-    res.json({ message: 'Role deleted successfully' });
+    
+    // Start transaction for safe deletion
+    const transaction = new sql.Transaction(pool);
+    
+    try {
+      await transaction.begin();
+      
+      // Get all designations that use this role
+      const designationsResult = await transaction.request()
+        .input('role_id', sql.Int, id)
+        .query('SELECT desig_id FROM TblDesignations WHERE role_id = @role_id');
+      
+      // For each designation, delete employees and their related records
+      for (const designation of designationsResult.recordset) {
+        // Get all employees with this designation
+        const employeesResult = await transaction.request()
+          .input('desig_id', sql.Int, designation.desig_id)
+          .query('SELECT emp_id, emp_det_id FROM TblEmpM WHERE desig_id = @desig_id');
+        
+        // Delete employees and their related records
+        for (const employee of employeesResult.recordset) {
+          // Delete from LeaveApplications first (if exists)
+          await transaction.request()
+            .input('emp_id', sql.Int, employee.emp_id)
+            .query('DELETE FROM LeaveApplications WHERE emp_id = @emp_id');
+          
+          // Delete from TblEmpM table
+          await transaction.request()
+            .input('emp_id', sql.Int, employee.emp_id)
+            .query('DELETE FROM TblEmpM WHERE emp_id = @emp_id');
+          
+          // Delete from TblEmpS table
+          await transaction.request()
+            .input('emp_det_id', sql.Int, employee.emp_det_id)
+            .query('DELETE FROM TblEmpS WHERE emp_det_id = @emp_det_id');
+        }
+        
+        // Delete the designation
+        await transaction.request()
+          .input('desig_id', sql.Int, designation.desig_id)
+          .query('DELETE FROM TblDesignations WHERE desig_id = @desig_id');
+      }
+      
+      // Finally delete the role
+      const result = await transaction.request()
+        .input('role_id', sql.Int, id)
+        .query('DELETE FROM TblRoles WHERE role_id = @role_id');
+      
+      // Commit the transaction
+      await transaction.commit();
+      
+      res.json({ message: 'Role and all related records deleted successfully' });
+    } catch (transactionError) {
+      // Rollback the transaction in case of error
+      await transaction.rollback();
+      throw transactionError;
+    }
   } catch (error) {
     console.error('Delete role error:', error);
-    res.status(500).json({ message: 'Server error' });
+    if (error.number === 547) { // Foreign key constraint error
+      res.status(400).json({ message: 'Cannot delete role due to existing dependencies' });
+    } else {
+      res.status(500).json({ message: 'Server error: ' + error.message });
+    }
   }
 };
 

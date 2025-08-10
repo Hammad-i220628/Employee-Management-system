@@ -10,8 +10,23 @@ const getEmployeeDashboard = async (req, res) => {
     const result = await pool.request()
       .input('email', sql.VarChar(100), userEmail)
       .query(`
-        SELECT * FROM vw_EmployeeDashboard 
-        WHERE email = @email
+        SELECT 
+          ed.name,
+          ed.cnic,
+          ed.start_date,
+          ed.email,
+          COALESCE(e.status, 'Unassigned') as status,
+          COALESCE(d.name, 'Not Assigned') as department_name,
+          COALESCE(s.name, 'Not Assigned') as section_name,
+          COALESCE(des.title, 'Not Assigned') as designation_title,
+          COALESCE(r.name, 'Employee') as role_name
+        FROM TblEmpS ed
+        LEFT JOIN TblEmpM e ON ed.emp_det_id = e.emp_det_id
+        LEFT JOIN TblSections s ON e.section_id = s.section_id
+        LEFT JOIN TblDepartments d ON s.dept_id = d.dept_id
+        LEFT JOIN TblDesignations des ON e.desig_id = des.desig_id
+        LEFT JOIN TblRoles r ON des.role_id = r.role_id
+        WHERE ed.email = @email
       `);
 
     if (result.recordset.length === 0) {
@@ -47,13 +62,13 @@ const getAdminDashboard = async (req, res) => {
     
     // Get various statistics
     const [employeesCount, departmentsCount, sectionsCount, unassignedCount] = await Promise.all([
-      pool.request().query('SELECT COUNT(*) as count FROM Employees'),
-      pool.request().query('SELECT COUNT(*) as count FROM Departments'),
-      pool.request().query('SELECT COUNT(*) as count FROM Sections'),
+      pool.request().query('SELECT COUNT(*) as count FROM TblEmpM'),
+      pool.request().query('SELECT COUNT(*) as count FROM TblDepartments'),
+      pool.request().query('SELECT COUNT(*) as count FROM TblSections'),
       pool.request().query(`
         SELECT COUNT(*) as count 
-        FROM EmployeeDetails ed 
-        LEFT JOIN Employees e ON e.emp_det_id = ed.emp_det_id 
+        FROM TblEmpS ed 
+        LEFT JOIN TblEmpM e ON e.emp_det_id = ed.emp_det_id 
         WHERE e.emp_det_id IS NULL
       `)
     ]);

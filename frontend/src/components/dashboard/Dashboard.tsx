@@ -40,8 +40,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onManageEmployees }) => {
   const stats = {
     totalEmployees: nonAdminEmployees.length,
     totalDepartments: departments.length,
-    activeEmployees: nonAdminEmployees.filter(emp => emp.status === 'Active').length,
-    changedEmployees: nonAdminEmployees.filter(emp => emp.status === 'Changed').length
+    activeEmployees: nonAdminEmployees.filter(emp => emp.status === 'Active' || emp.status === 'Changed').length,
+    changedEmployees: 0 // Always show 0 since we treat all as active
   };
 
   const StatCard = ({ title, value, icon: Icon, color = 'blue' }: any) => (
@@ -133,11 +133,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onManageEmployees }) => {
                     <p className="text-sm text-gray-500">{employee.designation_title}</p>
                   </div>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    employee.status === 'Active' 
+                    (employee.status === 'Active' || employee.status === 'Changed') 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-orange-100 text-orange-800'
                   }`}>
-                    {employee.status}
+                    {employee.status === 'Changed' ? 'Active' : employee.status}
                   </span>
                 </div>
               ))}
