@@ -67,7 +67,9 @@ CREATE TABLE TblEmpM (
     section_id INT NOT NULL FOREIGN KEY REFERENCES TblSections(section_id),
     desig_id INT NOT NULL FOREIGN KEY REFERENCES TblDesignations(desig_id),
     type VARCHAR(10) CHECK (type IN ('fixed', 'editable')) NOT NULL,
-    status VARCHAR(50) DEFAULT 'Active'
+    status VARCHAR(50) DEFAULT 'Active',
+    work_start_time TIME DEFAULT '09:00:00' NOT NULL,
+    work_end_time TIME DEFAULT '17:00:00' NOT NULL
 );
 GO
 
@@ -134,12 +136,14 @@ CREATE PROCEDURE sp_AddEmployee
     @emp_det_id INT,
     @section_id INT,
     @desig_id INT,
-    @type VARCHAR(10)
+    @type VARCHAR(10),
+    @work_start_time TIME = '09:00:00',
+    @work_end_time TIME = '17:00:00'
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type)
-    VALUES (@emp_det_id, @section_id, @desig_id, @type);
+    INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, work_start_time, work_end_time)
+    VALUES (@emp_det_id, @section_id, @desig_id, @type, @work_start_time, @work_end_time);
     
     SELECT SCOPE_IDENTITY() AS emp_id;
 END;
@@ -150,7 +154,9 @@ CREATE PROCEDURE sp_UpdateEmployee
     @user_email VARCHAR(100),
     @emp_id INT,
     @section_id INT,
-    @desig_id INT
+    @desig_id INT,
+    @work_start_time TIME = NULL,
+    @work_end_time TIME = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -166,7 +172,9 @@ BEGIN
 
     UPDATE TblEmpM
     SET section_id = @section_id,
-        desig_id = @desig_id
+        desig_id = @desig_id,
+        work_start_time = COALESCE(@work_start_time, work_start_time),
+        work_end_time = COALESCE(@work_end_time, work_end_time)
     WHERE emp_id = @emp_id;
 END;
 GO
@@ -375,6 +383,8 @@ SELECT
     e.desig_id,
     des.role_id,
     s.dept_id,
+    e.work_start_time,
+    e.work_end_time,
     d.name as department_name,
     s.name as section_name,
     des.title as designation_title,
@@ -385,6 +395,99 @@ INNER JOIN TblSections s ON e.section_id = s.section_id
 INNER JOIN TblDepartments d ON s.dept_id = d.dept_id
 INNER JOIN TblDesignations des ON e.desig_id = des.desig_id
 INNER JOIN TblRoles r ON des.role_id = r.role_id;
+GO
+
+-- =============================================
+-- WORK HOURS MIGRATION (For Existing Databases)
+-- =============================================
+-- This section adds work hours fields to existing databases
+-- Skip this section if creating a fresh database (work hours are already included above)
+
+PRINT 'Checking and adding work hours fields if they do not exist...';
+
+-- Add work_start_time field if it doesn't exist
+IF NOT EXISTS (
+    SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME = 'TblEmpM' AND COLUMN_NAME = 'work_start_time'
+)
+BEGIN
+    ALTER TABLE TblEmpM 
+    ADD work_start_time TIME DEFAULT '09:00:00' NOT NULL;
+    PRINT 'work_start_time field added successfully';
+END
+ELSE
+BEGIN
+    PRINT 'work_start_time field already exists';
+END
+
+-- Add work_end_time field if it doesn't exist
+IF NOT EXISTS (
+    SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME = 'TblEmpM' AND COLUMN_NAME = 'work_end_time'
+)
+BEGIN
+    ALTER TABLE TblEmpM 
+    ADD work_end_time TIME DEFAULT '17:00:00' NOT NULL;
+    PRINT 'work_end_time field added successfully';
+END
+ELSE
+BEGIN
+    PRINT 'work_end_time field already exists';
+END
+
+-- Update existing records to have default work hours (9 AM - 5 PM)
+UPDATE TblEmpM 
+SET work_start_time = '09:00:00', work_end_time = '17:00:00'
+WHERE work_start_time IS NULL OR work_end_time IS NULL;
+
+PRINT 'Updated existing records with default work hours (9:00 AM - 5:00 PM)';
+
+-- Update the view to include work hours if it exists
+IF EXISTS (SELECT * FROM sys.views WHERE name = 'vw_EmployeeDetails')
+BEGIN
+    DROP VIEW vw_EmployeeDetails;
+    PRINT 'Dropped existing view vw_EmployeeDetails for recreation';
+    
+    -- Recreate view with work hours fields
+    EXEC('
+    CREATE VIEW vw_EmployeeDetails AS
+    SELECT 
+        e.emp_id,
+        ed.emp_det_id,
+        ed.name,
+        ed.cnic,
+        ed.start_date,
+        ed.email,
+        e.type,
+        e.status,
+        e.section_id,
+        e.desig_id,
+        des.role_id,
+        s.dept_id,
+        e.work_start_time,
+        e.work_end_time,
+        d.name as department_name,
+        s.name as section_name,
+        des.title as designation_title,
+        r.name as role_name
+    FROM TblEmpM e
+    INNER JOIN TblEmpS ed ON e.emp_det_id = ed.emp_det_id
+    INNER JOIN TblSections s ON e.section_id = s.section_id
+    INNER JOIN TblDepartments d ON s.dept_id = d.dept_id
+    INNER JOIN TblDesignations des ON e.desig_id = des.desig_id
+    INNER JOIN TblRoles r ON des.role_id = r.role_id
+    ');
+    
+    PRINT 'Recreated view vw_EmployeeDetails with work hours fields';
+END
+
+PRINT 'Work hours migration completed successfully!';
+PRINT 'All employees now have default work hours: 9:00 AM - 5:00 PM';
+PRINT 'You can customize work hours for individual employees through the application.';
+
+-- =============================================
+-- END WORK HOURS MIGRATION
+-- =============================================
 GO
 
 -- Database Verification Queries

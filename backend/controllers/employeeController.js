@@ -1,5 +1,36 @@
 const { getConnection, sql } = require('../db/connection');
 
+// Helper function to convert time string to proper format for SQL Server TIME parameter
+const parseTimeToDate = (timeString, defaultHour = 9, defaultMinute = 0) => {
+  if (!timeString) {
+    // Create a specific date object at midnight UTC + time offset
+    const date = new Date(2000, 0, 1);
+    date.setUTCHours(defaultHour, defaultMinute, 0, 0);
+    return date;
+  }
+  
+  // Remove any whitespace
+  timeString = timeString.trim();
+  
+  // Parse different time formats
+  let hours = defaultHour;
+  let minutes = defaultMinute;
+  
+  // Parse HH:MM:SS format
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(timeString)) {
+    const parts = timeString.split(':');
+    hours = parseInt(parts[0], 10);
+    minutes = parseInt(parts[1], 10);
+  } else {
+    console.warn(`Invalid time format received: ${timeString}, using default: ${defaultHour}:${String(defaultMinute).padStart(2, '0')}`);
+  }
+  
+  // Create Date object using UTC methods to avoid timezone issues
+  const date = new Date(2000, 0, 1);
+  date.setUTCHours(hours, minutes, 0, 0);
+  return date;
+};
+
 // Get all employees with related data (both assigned and unassigned)
 const getAllEmployees = async (req, res) => {
   try {
@@ -19,10 +50,12 @@ const getAllEmployees = async (req, res) => {
           COALESCE(e.desig_id, 0) as desig_id,
           COALESCE(des.role_id, 0) as role_id,
           COALESCE(s.dept_id, 0) as dept_id,
+          COALESCE(CONVERT(varchar(8), e.work_start_time, 108), '09:00:00') as work_start_time,
+          COALESCE(CONVERT(varchar(8), e.work_end_time, 108), '17:00:00') as work_end_time,
           COALESCE(d.name, 'Not Assigned') as department_name,
           COALESCE(s.name, 'Not Assigned') as section_name,
           COALESCE(des.title, 'Not Assigned') as designation_title,
-          COALESCE(r.name, 'Employee') as role_name
+          COALESCE(r.name, 'Not Assigned') as role_name
         FROM TblEmpS ed
         LEFT JOIN TblEmpM e ON ed.emp_det_id = e.emp_det_id
         LEFT JOIN TblSections s ON e.section_id = s.section_id
@@ -178,9 +211,9 @@ const updateEmployee = async (req, res) => {
   let transaction = null;
   try {
     const { id } = req.params;
-    const { name, email, section_id, desig_id, type } = req.body;
+    const { name, email, section_id, desig_id, type, work_start_time, work_end_time } = req.body;
 
-    console.log('Update employee request:', { id, name, email, section_id, desig_id, type });
+    console.log('Update employee request:', { id, name, email, section_id, desig_id, type, work_start_time, work_end_time });
 
     const pool = await getConnection();
     
@@ -232,16 +265,31 @@ const updateEmployee = async (req, res) => {
             return res.status(400).json({ message: 'Invalid designation selected.' });
           }
           
-          await transaction.request()
+          let updateQuery = 'UPDATE TblEmpM SET section_id = @section_id, desig_id = @desig_id, type = @type';
+          const request = transaction.request()
             .input('emp_id', sql.Int, emp_id)
             .input('section_id', sql.Int, section_id)
             .input('desig_id', sql.Int, desig_id)
-            .input('type', sql.VarChar(10), type || 'editable')
-            .query(`
-              UPDATE TblEmpM 
-              SET section_id = @section_id, desig_id = @desig_id, type = @type
-              WHERE emp_id = @emp_id
-            `);
+            .input('type', sql.VarChar(10), type || 'editable');
+          
+          // Only update work hours if explicitly provided
+          if (work_start_time !== undefined && work_start_time !== null) {
+            updateQuery += ', work_start_time = @work_start_time';
+            const startTime = parseTimeToDate(work_start_time, 9, 0);
+            console.log('Updating start time:', work_start_time, '->', startTime);
+            request.input('work_start_time', sql.Time, startTime);
+          }
+          
+          if (work_end_time !== undefined && work_end_time !== null) {
+            updateQuery += ', work_end_time = @work_end_time';
+            const endTime = parseTimeToDate(work_end_time, 17, 0);
+            console.log('Updating end time:', work_end_time, '->', endTime);
+            request.input('work_end_time', sql.Time, endTime);
+          }
+          
+          updateQuery += ' WHERE emp_id = @emp_id';
+          
+          await request.query(updateQuery);
           
           // Force status to remain 'Active' after the update (overrides trigger)
           await transaction.request()
@@ -449,7 +497,8 @@ const assignEmployee = async (req, res) => {
   let transaction = null;
   try {
     const { emp_det_id } = req.params;
-    const { section_id, desig_id, role_id, type = 'editable' } = req.body;
+    const { section_id, desig_id, role_id, type = 'editable', work_start_time, work_end_time } = req.body;
+    console.log('Assign employee request:', { emp_det_id, section_id, desig_id, role_id, type, work_start_time, work_end_time });
 
     if (!section_id || !desig_id || !role_id) {
       return res.status(400).json({ message: 'Section, designation, and role are required' });
@@ -497,16 +546,31 @@ const assignEmployee = async (req, res) => {
       console.log('Transaction started successfully');
       
       // Assign employee
-      const result = await transaction.request()
+      let insertQuery = 'INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, status';
+      let valuesQuery = 'VALUES (@emp_det_id, @section_id, @desig_id, @type, \'Active\'';
+      
+      const request = transaction.request()
         .input('emp_det_id', sql.Int, emp_det_id)
         .input('section_id', sql.Int, section_id)
         .input('desig_id', sql.Int, desig_id)
-        .input('type', sql.VarChar(10), type)
-        .query(`
-          INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, status)
-          VALUES (@emp_det_id, @section_id, @desig_id, @type, 'Active');
-          SELECT SCOPE_IDENTITY() AS emp_id;
-        `);
+        .input('type', sql.VarChar(10), type);
+      
+      // Always include work hours - they are NOT NULL in database
+      insertQuery += ', work_start_time';
+      valuesQuery += ', @work_start_time';
+      const startTime = parseTimeToDate(work_start_time, 9, 0);
+      console.log('Parsed start time for assignment:', work_start_time, '->', startTime);
+      request.input('work_start_time', sql.Time, startTime);
+      
+      insertQuery += ', work_end_time';
+      valuesQuery += ', @work_end_time';
+      const endTime = parseTimeToDate(work_end_time, 17, 0);
+      console.log('Parsed end time for assignment:', work_end_time, '->', endTime);
+      request.input('work_end_time', sql.Time, endTime);
+      
+      insertQuery += ') ' + valuesQuery + '); SELECT SCOPE_IDENTITY() AS emp_id;';
+      
+      const result = await request.query(insertQuery);
       
       const emp_id = result.recordset[0].emp_id;
       

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { User, Calendar, Building, Mail, Briefcase, Badge, LogOut } from 'lucide-react';
+import { User, Calendar, Building, Mail, Briefcase, Badge, LogOut, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface EmployeeData {
@@ -9,6 +9,8 @@ interface EmployeeData {
   cnic: string;
   start_date: string;
   status: string;
+  work_start_time: string;
+  work_end_time: string;
   department_name: string;
   section_name: string;
   designation_title: string;
@@ -175,6 +177,19 @@ export const EmployeeDashboard: React.FC = () => {
               label="Role" 
               value={employeeData.role_name} 
             />
+            <InfoItem 
+              icon={Clock} 
+              label="Work Hours" 
+              value={(() => {
+                try {
+                  const startTime = new Date(`1970-01-01T${employeeData.work_start_time}`);
+                  const endTime = new Date(`1970-01-01T${employeeData.work_end_time}`);
+                  return `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                } catch (error) {
+                  return `${employeeData.work_start_time} - ${employeeData.work_end_time}`;
+                }
+              })()} 
+            />
           </div>
         </CardContent>
       </Card>
@@ -195,6 +210,22 @@ export const EmployeeDashboard: React.FC = () => {
                 <span className="text-sm font-medium text-gray-600">Days Since Joining</span>
                 <span className="font-semibold text-green-600">
                   {Math.floor((new Date().getTime() - new Date(employeeData.start_date).getTime()) / (1000 * 60 * 60 * 24))} days
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                <span className="text-sm font-medium text-gray-600">Daily Work Hours</span>
+                <span className="font-semibold text-purple-600">
+                  {(() => {
+                    try {
+                      const start = new Date(`1970-01-01T${employeeData.work_start_time}`);
+                      const end = new Date(`1970-01-01T${employeeData.work_end_time}`);
+                      const diffMs = end.getTime() - start.getTime();
+                      const diffHrs = diffMs / (1000 * 60 * 60);
+                      return `${diffHrs} hours`;
+                    } catch (error) {
+                      return 'N/A';
+                    }
+                  })()} 
                 </span>
               </div>
             </div>

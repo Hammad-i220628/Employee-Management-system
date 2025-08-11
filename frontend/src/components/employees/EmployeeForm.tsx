@@ -21,7 +21,9 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
     section_id: '',
     desig_id: '',
     role_id: '',
-    type: 'editable'
+    type: 'editable',
+    work_start_time: '09:00',
+    work_end_time: '17:00'
   });
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -34,6 +36,8 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
   const [error, setError] = useState('');
   const [originalName, setOriginalName] = useState('');
   const [originalCnic, setOriginalCnic] = useState('');
+  const [originalWorkStartTime, setOriginalWorkStartTime] = useState('');
+  const [originalWorkEndTime, setOriginalWorkEndTime] = useState('');
 
   useEffect(() => {
     loadFormData();
@@ -41,6 +45,13 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
 
   useEffect(() => {
     if (employee) {
+      const startTime = employee.work_start_time ? (
+        employee.work_start_time.length > 5 ? employee.work_start_time.substring(0, 5) : employee.work_start_time
+      ) : '09:00';
+      const endTime = employee.work_end_time ? (
+        employee.work_end_time.length > 5 ? employee.work_end_time.substring(0, 5) : employee.work_end_time
+      ) : '17:00';
+      
       setFormData({
         name: employee.name,
         cnic: employee.cnic,
@@ -48,11 +59,15 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
         section_id: String(employee.section_id),
         desig_id: String(employee.desig_id),
         role_id: String(employee.role_id),
-        type: employee.type
+        type: employee.type,
+        work_start_time: startTime,
+        work_end_time: endTime
       });
       setSelectedDepartment(String(employee.dept_id));
       setOriginalName(employee.name);
       setOriginalCnic(employee.cnic);
+      setOriginalWorkStartTime(startTime);
+      setOriginalWorkEndTime(endTime);
     }
   }, [employee]);
 
@@ -105,11 +120,20 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
 
     try {
       if (employee) {
-        const updatePayload = {
+        const updatePayload: any = {
           section_id: Number(formData.section_id),
           desig_id: Number(formData.desig_id),
           role_id: Number(formData.role_id),
         };
+        
+        // Only include work hours if they have changed
+        if (formData.work_start_time !== originalWorkStartTime) {
+          updatePayload.work_start_time = (formData.work_start_time || '09:00') + ':00';
+        }
+        
+        if (formData.work_end_time !== originalWorkEndTime) {
+          updatePayload.work_end_time = (formData.work_end_time || '17:00') + ':00';
+        }
         console.log('Updating employee payload:', updatePayload);
         
         // Check if employee is unassigned (emp_id = 0)
@@ -368,9 +392,45 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
               {!formData.role_id && (
                 <p className="text-xs text-gray-500 mt-1">Please select a role first</p>
               )}
-              {formData.role_id && filteredDesignations.length === 0 && (
+              {formData.role_id && formData.role_id !== '0' && filteredDesignations.length === 0 && (
                 <p className="text-xs text-orange-600 mt-1">No designations available for this role</p>
               )}
+            </div>
+
+            {/* Work Hours Section */}
+            <div className="col-span-2">
+              <h4 className="text-md font-semibold text-gray-800 mb-3">Work Hours</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="work_start_time" className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Time
+                  </label>
+                  <Input
+                    id="work_start_time"
+                    name="work_start_time"
+                    type="time"
+                    value={formData.work_start_time || '09:00'}
+                    onChange={handleChange}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="work_end_time" className="block text-sm font-medium text-gray-700 mb-1">
+                    End Time
+                  </label>
+                  <Input
+                    id="work_end_time"
+                    name="work_end_time"
+                    type="time"
+                    value={formData.work_end_time || '17:00'}
+                    onChange={handleChange}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Default work hours are 9:00 AM to 5:00 PM, but can be customized for each employee.
+              </p>
             </div>
           </>
         )}

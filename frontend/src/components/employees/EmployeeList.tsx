@@ -157,6 +157,22 @@ export const EmployeeList: React.FC = () => {
                   <span className="font-medium text-gray-700">Role:</span>
                   <span className="ml-2 text-gray-600">{employee.role_name}</span>
                 </div>
+                {employee.work_start_time && employee.work_end_time && (
+                  <div>
+                    <span className="font-medium text-gray-700">Work Hours:</span>
+                    <span className="ml-2 text-gray-600">
+                      {(() => {
+                        try {
+                          const startTime = new Date(`1970-01-01T${employee.work_start_time}`);
+                          const endTime = new Date(`1970-01-01T${employee.work_end_time}`);
+                          return `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                        } catch (error) {
+                          return `${employee.work_start_time} - ${employee.work_end_time}`;
+                        }
+                      })()}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 pt-4">

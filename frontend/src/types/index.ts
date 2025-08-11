@@ -49,6 +49,8 @@ export interface Employee {
   desig_id: number;
   role_id: number;
   dept_id: number;
+  work_start_time?: string;
+  work_end_time?: string;
   department_name?: string;
   section_name?: string;
   designation_title?: string;
@@ -66,6 +68,8 @@ export interface EmployeeFormData {
   desig_id: string;
   role_id: string;
   type: 'fixed' | 'editable';
+  work_start_time?: string;
+  work_end_time?: string;
 }
 
 export interface ApiResponse<T> {
