@@ -11,6 +11,8 @@ const getEmployeeDashboard = async (req, res) => {
       .input('email', sql.VarChar(100), userEmail)
       .query(`
         SELECT 
+          e.emp_id,
+          ed.emp_det_id,
           ed.name,
           ed.cnic,
           ed.start_date,
@@ -39,6 +41,8 @@ const getEmployeeDashboard = async (req, res) => {
     
     // Format the response
     const dashboardData = {
+      emp_id: employeeData.emp_id, // Add emp_id for leave applications
+      emp_det_id: employeeData.emp_det_id,
       name: employeeData.name,
       cnic: employeeData.cnic,
       start_date: employeeData.start_date,

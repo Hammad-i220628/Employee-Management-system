@@ -11,6 +11,15 @@ import { EmployeeDashboard } from './components/dashboard/EmployeeDashboard';
 const AppContent: React.FC = () => {
   const { isAuthenticated, loading, user } = useAuth();
 
+  // Debug info - remove this in production
+  console.log('App Debug:', {
+    isAuthenticated,
+    loading,
+    user,
+    token: localStorage.getItem('token'),
+    savedUser: localStorage.getItem('user')
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

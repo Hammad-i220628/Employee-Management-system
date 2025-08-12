@@ -37,7 +37,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (token && savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
+        // Validate that user object has required properties
+        if (parsedUser && parsedUser.user_id && parsedUser.role) {
+          setUser(parsedUser);
+        } else {
+          // Invalid user data, clear storage
+          console.warn('Invalid user data found, clearing authentication');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
       } catch (error) {
         console.error('Error parsing saved user:', error);
         localStorage.removeItem('token');

@@ -24,6 +24,25 @@ const config = {
 
 let pool;
 
+// Create a promise-based pool connection
+const poolPromise = (async () => {
+  try {
+    console.log('Creating database connection pool...');
+    const pool = await sql.connect(config);
+    console.log('Connected to SQL Server');
+    
+    // Handle pool errors
+    pool.on('error', (err) => {
+      console.error('Database pool error:', err);
+    });
+    
+    return pool;
+  } catch (error) {
+    console.error('Database connection error:', error);
+    throw error;
+  }
+})();
+
 const getConnection = async () => {
   try {
     if (pool && pool.connected) {
@@ -70,6 +89,7 @@ const closeConnection = async () => {
 
 module.exports = {
   sql,
+  poolPromise,
   getConnection,
   closeConnection
-}; 
+};

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Building, Settings, BarChart3, Award, User, Clock } from 'lucide-react';
+import { Users, Building, Settings, BarChart3, Award, User, Clock, FileText } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -16,7 +16,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     { id: 'employees', label: 'Employees', icon: Users },
     { id: 'departments', label: 'Department & Sections', icon: Building },
     { id: 'settings', label: 'Roles & Designation', icon: Award },
-    { id: 'attendance', label: 'Attendance', icon: Clock }
+    { id: 'attendance', label: 'Attendance', icon: Clock },
+    { id: 'leaves', label: 'Leave Management', icon: FileText }
   ];
   
   const employeeMenuItems = [
