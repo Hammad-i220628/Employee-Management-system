@@ -101,20 +101,61 @@ const leaveController = {
         });
       }
       
+      // Determine approver type based on JWT token
+      const userRole = req.user.role; // This comes from the JWT middleware
+      const approverType = userRole === 'Admin' ? 'admin' : 'employee';
+      
       const pool = await poolPromise;
-      const request = pool.request();
       
-      request.input('leave_id', sql.Int, parseInt(leave_id));
-      request.input('status', sql.VarChar(20), status);
-      request.input('approved_by', sql.Int, approved_by);
-      request.input('comments', sql.NVarChar(500), comments);
-      
-      const result = await request.execute('sp_UpdateLeaveStatus');
-      
-      res.json({
-        success: true,
-        message: result.recordset[0].message
-      });
+      try {
+        // Try with the new 5-parameter version first (with approver_type)
+        const request = pool.request();
+        request.input('leave_id', sql.Int, parseInt(leave_id));
+        request.input('status', sql.VarChar(20), status);
+        request.input('approved_by', sql.Int, approved_by);
+        request.input('comments', sql.NVarChar(500), comments);
+        request.input('approver_type', sql.VarChar(10), approverType);
+        
+        const result = await request.execute('sp_UpdateLeaveStatus');
+        
+        res.json({
+          success: true,
+          message: result.recordset[0].message
+        });
+        
+      } catch (procError) {
+        // If the 5-parameter version fails, try the old 4-parameter version
+        if (procError.message.includes('too many arguments')) {
+          console.log('Falling back to old stored procedure version');
+          
+          const fallbackRequest = pool.request();
+          fallbackRequest.input('leave_id', sql.Int, parseInt(leave_id));
+          fallbackRequest.input('status', sql.VarChar(20), status);
+          fallbackRequest.input('approved_by', sql.Int, approved_by);
+          fallbackRequest.input('comments', sql.NVarChar(500), comments);
+          
+          const fallbackResult = await fallbackRequest.execute('sp_UpdateLeaveStatus');
+          
+          // For admin users, also update the approver_type manually
+          if (approverType === 'admin') {
+            const updateRequest = pool.request();
+            updateRequest.input('leave_id', sql.Int, parseInt(leave_id));
+            await updateRequest.query(`
+              UPDATE TblLeaves 
+              SET approver_type = 'admin'
+              WHERE leave_id = @leave_id AND approver_type IS NULL
+            `);
+          }
+          
+          res.json({
+            success: true,
+            message: fallbackResult.recordset[0].message
+          });
+          
+        } else {
+          throw procError;
+        }
+      }
       
     } catch (error) {
       console.error('Update leave status error:', error);
@@ -233,7 +274,7 @@ const leaveController = {
           l.status,
           l.applied_date,
           l.approved_by,
-          approver.name as approved_by_name,
+          COALESCE(approver.name, admin_user.username, 'Admin') as approved_by_name,
           l.approved_date,
           l.comments
         FROM TblLeaves l
@@ -244,6 +285,7 @@ const leaveController = {
         INNER JOIN TblDesignations des ON e.desig_id = des.desig_id
         LEFT JOIN TblEmpM approver_emp ON l.approved_by = approver_emp.emp_id
         LEFT JOIN TblEmpS approver ON approver_emp.emp_det_id = approver.emp_det_id
+        LEFT JOIN TblUsers admin_user ON l.approved_by = admin_user.user_id AND approver.name IS NULL
         WHERE l.leave_id = @leave_id
       `);
       

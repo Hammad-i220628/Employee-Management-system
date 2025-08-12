@@ -52,6 +52,8 @@ const getAllEmployees = async (req, res) => {
           COALESCE(s.dept_id, 0) as dept_id,
           COALESCE(CONVERT(varchar(8), e.work_start_time, 108), '09:00:00') as work_start_time,
           COALESCE(CONVERT(varchar(8), e.work_end_time, 108), '17:00:00') as work_end_time,
+          COALESCE(e.salary, 50000.00) as salary,
+          COALESCE(e.bonus, 0.00) as bonus,
           COALESCE(d.name, 'Not Assigned') as department_name,
           COALESCE(s.name, 'Not Assigned') as section_name,
           COALESCE(des.title, 'Not Assigned') as designation_title,
@@ -102,9 +104,9 @@ const addEmployee = async (req, res) => {
   let transaction = null;
   try {
     console.log('Received request body:', req.body);
-    const { name, cnic, start_date, email, password, section_id, desig_id, type } = req.body;
+    const { name, cnic, start_date, email, password, section_id, desig_id, type, salary, bonus } = req.body;
 
-    console.log('Extracted fields:', { name, cnic, start_date, email, section_id, desig_id, type });
+      console.log('Extracted fields:', { name, cnic, start_date, email, section_id, desig_id, type, salary, bonus });
 
     if (!name || !cnic || !start_date || !email) {
       console.log('Validation failed - missing required fields');
@@ -151,9 +153,11 @@ const addEmployee = async (req, res) => {
           .input('section_id', sql.Int, section_id)
           .input('desig_id', sql.Int, desig_id)
           .input('type', sql.VarChar(10), type || 'editable')
+          .input('salary', sql.Decimal(10, 2), salary || 50000.00)
+          .input('bonus', sql.Decimal(10, 2), bonus || 0.00)
           .query(`
-            INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, status)
-            VALUES (@emp_det_id, @section_id, @desig_id, @type, 'Active');
+            INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, status, salary, bonus)
+            VALUES (@emp_det_id, @section_id, @desig_id, @type, 'Active', @salary, @bonus);
             SELECT SCOPE_IDENTITY() AS emp_id;
           `);
         
@@ -211,9 +215,9 @@ const updateEmployee = async (req, res) => {
   let transaction = null;
   try {
     const { id } = req.params;
-    const { name, email, section_id, desig_id, type, work_start_time, work_end_time } = req.body;
+    const { name, email, section_id, desig_id, type, work_start_time, work_end_time, salary, bonus } = req.body;
 
-    console.log('Update employee request:', { id, name, email, section_id, desig_id, type, work_start_time, work_end_time });
+    console.log('Update employee request:', { id, name, email, section_id, desig_id, type, work_start_time, work_end_time, salary, bonus });
 
     const pool = await getConnection();
     
@@ -285,6 +289,20 @@ const updateEmployee = async (req, res) => {
             const endTime = parseTimeToDate(work_end_time, 17, 0);
             console.log('Updating end time:', work_end_time, '->', endTime);
             request.input('work_end_time', sql.Time, endTime);
+          }
+          
+          // Only update salary if explicitly provided
+          if (salary !== undefined && salary !== null) {
+            updateQuery += ', salary = @salary';
+            console.log('Updating salary:', salary);
+            request.input('salary', sql.Decimal(10, 2), parseFloat(salary));
+          }
+          
+          // Only update bonus if explicitly provided
+          if (bonus !== undefined && bonus !== null) {
+            updateQuery += ', bonus = @bonus';
+            console.log('Updating bonus:', bonus);
+            request.input('bonus', sql.Decimal(10, 2), parseFloat(bonus));
           }
           
           updateQuery += ' WHERE emp_id = @emp_id';
@@ -497,8 +515,8 @@ const assignEmployee = async (req, res) => {
   let transaction = null;
   try {
     const { emp_det_id } = req.params;
-    const { section_id, desig_id, role_id, type = 'editable', work_start_time, work_end_time } = req.body;
-    console.log('Assign employee request:', { emp_det_id, section_id, desig_id, role_id, type, work_start_time, work_end_time });
+    const { section_id, desig_id, role_id, type = 'editable', work_start_time, work_end_time, salary, bonus } = req.body;
+    console.log('Assign employee request:', { emp_det_id, section_id, desig_id, role_id, type, work_start_time, work_end_time, salary, bonus });
 
     if (!section_id || !desig_id || !role_id) {
       return res.status(400).json({ message: 'Section, designation, and role are required' });
@@ -567,6 +585,19 @@ const assignEmployee = async (req, res) => {
       const endTime = parseTimeToDate(work_end_time, 17, 0);
       console.log('Parsed end time for assignment:', work_end_time, '->', endTime);
       request.input('work_end_time', sql.Time, endTime);
+      
+      // Always include salary and bonus - salary is NOT NULL in database
+      insertQuery += ', salary';
+      valuesQuery += ', @salary';
+      const employeeSalary = salary || 50000.00;
+      console.log('Parsed salary for assignment:', salary, '->', employeeSalary);
+      request.input('salary', sql.Decimal(10, 2), employeeSalary);
+      
+      insertQuery += ', bonus';
+      valuesQuery += ', @bonus';
+      const employeeBonus = bonus || 0.00;
+      console.log('Parsed bonus for assignment:', bonus, '->', employeeBonus);
+      request.input('bonus', sql.Decimal(10, 2), employeeBonus);
       
       insertQuery += ') ' + valuesQuery + '); SELECT SCOPE_IDENTITY() AS emp_id;';
       

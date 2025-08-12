@@ -202,8 +202,11 @@ export const LeaveManagement: React.FC = () => {
       }
       
       const user = JSON.parse(userStr);
-      if (!user.emp_id) {
-        setError('Employee ID not found. Please contact administrator.');
+      // For status updates, we can use emp_id if available, otherwise use user.id (for admins)
+      const approvedBy = user.emp_id || user.id;
+      
+      if (!approvedBy) {
+        setError('User identification not found. Please contact administrator.');
         return;
       }
 
@@ -215,7 +218,7 @@ export const LeaveManagement: React.FC = () => {
         },
         body: JSON.stringify({
           status: statusForm.status,
-          approved_by: user.emp_id,
+          approved_by: approvedBy,
           comments: statusForm.comments
         })
       });

@@ -69,7 +69,9 @@ CREATE TABLE TblEmpM (
     type VARCHAR(10) CHECK (type IN ('fixed', 'editable')) NOT NULL,
     status VARCHAR(50) DEFAULT 'Active',
     work_start_time TIME DEFAULT '09:00:00' NOT NULL,
-    work_end_time TIME DEFAULT '17:00:00' NOT NULL
+    work_end_time TIME DEFAULT '17:00:00' NOT NULL,
+    salary DECIMAL(10, 2) DEFAULT 50000.00 NOT NULL,
+    bonus DECIMAL(10, 2) DEFAULT 0.00
 );
 GO
 
@@ -138,12 +140,14 @@ CREATE PROCEDURE sp_AddEmployee
     @desig_id INT,
     @type VARCHAR(10),
     @work_start_time TIME = '09:00:00',
-    @work_end_time TIME = '17:00:00'
+    @work_end_time TIME = '17:00:00',
+    @salary DECIMAL(10, 2) = 50000.00,
+    @bonus DECIMAL(10, 2) = 0.00
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, work_start_time, work_end_time)
-    VALUES (@emp_det_id, @section_id, @desig_id, @type, @work_start_time, @work_end_time);
+    INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, work_start_time, work_end_time, salary, bonus)
+    VALUES (@emp_det_id, @section_id, @desig_id, @type, @work_start_time, @work_end_time, @salary, @bonus);
     
     SELECT SCOPE_IDENTITY() AS emp_id;
 END;
@@ -156,7 +160,9 @@ CREATE PROCEDURE sp_UpdateEmployee
     @section_id INT,
     @desig_id INT,
     @work_start_time TIME = NULL,
-    @work_end_time TIME = NULL
+    @work_end_time TIME = NULL,
+    @salary DECIMAL(10, 2) = NULL,
+    @bonus DECIMAL(10, 2) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -174,7 +180,9 @@ BEGIN
     SET section_id = @section_id,
         desig_id = @desig_id,
         work_start_time = COALESCE(@work_start_time, work_start_time),
-        work_end_time = COALESCE(@work_end_time, work_end_time)
+        work_end_time = COALESCE(@work_end_time, work_end_time),
+        salary = COALESCE(@salary, salary),
+        bonus = COALESCE(@bonus, bonus)
     WHERE emp_id = @emp_id;
 END;
 GO
@@ -364,7 +372,7 @@ BEGIN
     EXEC sp_AddEmployeeDetails 'admin', '00000-0000000-0', '2024-01-01', 'admin@gmail.com';
     SELECT @admin_emp_det_id = SCOPE_IDENTITY();
     
-    EXEC sp_AddEmployee @admin_emp_det_id, 1, 1, 'fixed';
+    EXEC sp_AddEmployee @admin_emp_det_id, 1, 1, 'fixed', '09:00:00', '17:00:00', 50000.00, 0.00;
 END
 GO
 
@@ -385,6 +393,8 @@ SELECT
     s.dept_id,
     e.work_start_time,
     e.work_end_time,
+    e.salary,
+    e.bonus,
     d.name as department_name,
     s.name as section_name,
     des.title as designation_title,
@@ -413,13 +423,13 @@ CREATE TABLE TblLeaves (
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'viewed')),
     applied_date DATETIME DEFAULT GETDATE(),
     approved_by INT NULL,
+    approver_type VARCHAR(10) DEFAULT 'employee' CHECK (approver_type IN ('employee', 'admin')),
     approved_date DATETIME NULL,
     comments NVARCHAR(500) NULL,
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
-    -- Foreign key constraints with proper names
-    CONSTRAINT FK_TblLeaves_EmpId FOREIGN KEY (emp_id) REFERENCES TblEmpM(emp_id) ON DELETE CASCADE,
-    CONSTRAINT FK_TblLeaves_ApprovedBy FOREIGN KEY (approved_by) REFERENCES TblEmpM(emp_id) ON DELETE NO ACTION
+    -- Foreign key constraints with proper names (removed FK_TblLeaves_ApprovedBy to allow admin approvals)
+    CONSTRAINT FK_TblLeaves_EmpId FOREIGN KEY (emp_id) REFERENCES TblEmpM(emp_id) ON DELETE CASCADE
 );
 GO
 
@@ -501,7 +511,11 @@ BEGIN
         l.status,
         l.applied_date,
         l.approved_by,
-        approver.name as approved_by_name,
+        l.approver_type,
+        CASE 
+            WHEN l.approver_type = 'admin' THEN COALESCE(admin_user.username, 'Admin')
+            ELSE COALESCE(approver.name, 'Unknown')
+        END as approved_by_name,
         l.approved_date,
         l.comments
     FROM TblLeaves l
@@ -510,8 +524,9 @@ BEGIN
     INNER JOIN TblSections s ON e.section_id = s.section_id
     INNER JOIN TblDepartments d ON s.dept_id = d.dept_id
     INNER JOIN TblDesignations des ON e.desig_id = des.desig_id
-    LEFT JOIN TblEmpM approver_emp ON l.approved_by = approver_emp.emp_id
+    LEFT JOIN TblEmpM approver_emp ON l.approved_by = approver_emp.emp_id AND l.approver_type = 'employee'
     LEFT JOIN TblEmpS approver ON approver_emp.emp_det_id = approver.emp_det_id
+    LEFT JOIN TblUsers admin_user ON l.approved_by = admin_user.user_id AND l.approver_type = 'admin'
     WHERE (@status IS NULL OR l.status = @status)
     AND (@emp_id IS NULL OR l.emp_id = @emp_id)
     ORDER BY l.applied_date DESC;
@@ -523,21 +538,56 @@ CREATE PROCEDURE sp_UpdateLeaveStatus
     @leave_id INT,
     @status VARCHAR(20),
     @approved_by INT,
-    @comments NVARCHAR(500) = NULL
+    @comments NVARCHAR(500) = NULL,
+    @approver_type VARCHAR(10) = 'employee'
 AS
 BEGIN
     SET NOCOUNT ON;
     
+    -- Validate status
     IF @status NOT IN ('approved', 'rejected', 'viewed')
     BEGIN
         RAISERROR('Invalid status. Must be approved, rejected, or viewed.', 16, 1);
         RETURN;
     END
     
+    -- Validate approver type
+    IF @approver_type NOT IN ('employee', 'admin')
+    BEGIN
+        RAISERROR('Invalid approver type. Must be employee or admin.', 16, 1);
+        RETURN;
+    END
+    
+    -- For employee approvers, validate that emp_id exists
+    IF @approver_type = 'employee' AND NOT EXISTS (SELECT 1 FROM TblEmpM WHERE emp_id = @approved_by)
+    BEGIN
+        RAISERROR('Invalid employee ID for approver.', 16, 1);
+        RETURN;
+    END
+    
+    -- For admin approvers, validate that user_id exists
+    IF @approver_type = 'admin' AND NOT EXISTS (SELECT 1 FROM TblUsers WHERE user_id = @approved_by)
+    BEGIN
+        RAISERROR('Invalid admin user ID for approver.', 16, 1);
+        RETURN;
+    END
+    
+    -- Check if leave exists
+    IF NOT EXISTS (SELECT 1 FROM TblLeaves WHERE leave_id = @leave_id)
+    BEGIN
+        RAISERROR('Leave application not found.', 16, 1);
+        RETURN;
+    END
+    
+    -- Update leave status
     UPDATE TblLeaves 
     SET status = @status,
         approved_by = @approved_by,
-        approved_date = GETDATE(),
+        approver_type = @approver_type,
+        approved_date = CASE 
+            WHEN @status IN ('approved', 'rejected', 'viewed') THEN GETDATE() 
+            ELSE approved_date 
+        END,
         comments = @comments,
         updated_at = GETDATE()
     WHERE leave_id = @leave_id;
@@ -562,12 +612,18 @@ BEGIN
         l.reason,
         l.status,
         l.applied_date,
-        approver.name as approved_by_name,
+        l.approved_by,
+        l.approver_type,
+        CASE 
+            WHEN l.approver_type = 'admin' THEN COALESCE(admin_user.username, 'Admin')
+            ELSE COALESCE(approver.name, 'Unknown')
+        END as approved_by_name,
         l.approved_date,
         l.comments
     FROM TblLeaves l
-    LEFT JOIN TblEmpM approver_emp ON l.approved_by = approver_emp.emp_id
+    LEFT JOIN TblEmpM approver_emp ON l.approved_by = approver_emp.emp_id AND l.approver_type = 'employee'
     LEFT JOIN TblEmpS approver ON approver_emp.emp_det_id = approver.emp_det_id
+    LEFT JOIN TblUsers admin_user ON l.approved_by = admin_user.user_id AND l.approver_type = 'admin'
     WHERE l.emp_id = @emp_id
     ORDER BY l.applied_date DESC;
 END;
@@ -638,6 +694,189 @@ PRINT 'Leaves table and stored procedures created successfully!';
 PRINT 'You can now use the leave management functionality.';
 
 -- =============================================
+-- ADMIN LEAVE APPROVAL MIGRATION (For Existing Databases)
+-- =============================================
+-- This section handles existing databases that may not have the approver_type column
+
+PRINT 'Checking and updating leave management for admin approvals...';
+
+-- Add approver_type column if it doesn't exist
+IF NOT EXISTS (
+    SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME = 'TblLeaves' AND COLUMN_NAME = 'approver_type'
+)
+BEGIN
+    ALTER TABLE TblLeaves ADD approver_type VARCHAR(10) DEFAULT 'employee' CHECK (approver_type IN ('employee', 'admin'));
+    PRINT 'approver_type column added to TblLeaves table';
+END
+ELSE
+BEGIN
+    PRINT 'approver_type column already exists in TblLeaves table';
+END
+
+-- Drop and recreate the stored procedure to ensure it has the correct signature
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_UpdateLeaveStatus')
+BEGIN
+    DROP PROCEDURE sp_UpdateLeaveStatus;
+    PRINT 'Dropped existing sp_UpdateLeaveStatus procedure';
+END
+
+-- Recreate sp_UpdateLeaveStatus with proper parameters
+CREATE PROCEDURE sp_UpdateLeaveStatus
+    @leave_id INT,
+    @status VARCHAR(20),
+    @approved_by INT,
+    @comments NVARCHAR(500) = NULL,
+    @approver_type VARCHAR(10) = 'employee'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Validate status
+    IF @status NOT IN ('approved', 'rejected', 'viewed')
+    BEGIN
+        RAISERROR('Invalid status. Must be approved, rejected, or viewed.', 16, 1);
+        RETURN;
+    END
+    
+    -- Validate approver type
+    IF @approver_type NOT IN ('employee', 'admin')
+    BEGIN
+        RAISERROR('Invalid approver type. Must be employee or admin.', 16, 1);
+        RETURN;
+    END
+    
+    -- For employee approvers, validate that emp_id exists
+    IF @approver_type = 'employee' AND NOT EXISTS (SELECT 1 FROM TblEmpM WHERE emp_id = @approved_by)
+    BEGIN
+        RAISERROR('Invalid employee ID for approver.', 16, 1);
+        RETURN;
+    END
+    
+    -- For admin approvers, validate that user_id exists
+    IF @approver_type = 'admin' AND NOT EXISTS (SELECT 1 FROM TblUsers WHERE user_id = @approved_by)
+    BEGIN
+        RAISERROR('Invalid admin user ID for approver.', 16, 1);
+        RETURN;
+    END
+    
+    -- Check if leave exists
+    IF NOT EXISTS (SELECT 1 FROM TblLeaves WHERE leave_id = @leave_id)
+    BEGIN
+        RAISERROR('Leave application not found.', 16, 1);
+        RETURN;
+    END
+    
+    -- Update leave status
+    UPDATE TblLeaves 
+    SET status = @status,
+        approved_by = @approved_by,
+        approver_type = @approver_type,
+        approved_date = CASE 
+            WHEN @status IN ('approved', 'rejected', 'viewed') THEN GETDATE() 
+            ELSE approved_date 
+        END,
+        comments = @comments,
+        updated_at = GETDATE()
+    WHERE leave_id = @leave_id;
+    
+    SELECT 'Leave status updated successfully' as message;
+END;
+GO
+
+-- Drop and recreate sp_GetLeaveApplications to ensure it handles admin approvers
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_GetLeaveApplications')
+BEGIN
+    DROP PROCEDURE sp_GetLeaveApplications;
+    PRINT 'Dropped existing sp_GetLeaveApplications procedure';
+END
+
+CREATE PROCEDURE sp_GetLeaveApplications
+    @status VARCHAR(20) = NULL,
+    @emp_id INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        l.leave_id,
+        l.emp_id,
+        ed.name as employee_name,
+        d.name as department_name,
+        des.title as designation_title,
+        l.leave_type,
+        l.start_date,
+        l.end_date,
+        l.days_requested,
+        l.reason,
+        l.status,
+        l.applied_date,
+        l.approved_by,
+        COALESCE(l.approver_type, 'employee') as approver_type,
+        CASE 
+            WHEN COALESCE(l.approver_type, 'employee') = 'admin' THEN COALESCE(admin_user.username, 'Admin')
+            ELSE COALESCE(approver.name, 'Unknown')
+        END as approved_by_name,
+        l.approved_date,
+        l.comments
+    FROM TblLeaves l
+    INNER JOIN TblEmpM e ON l.emp_id = e.emp_id
+    INNER JOIN TblEmpS ed ON e.emp_det_id = ed.emp_det_id
+    INNER JOIN TblSections s ON e.section_id = s.section_id
+    INNER JOIN TblDepartments d ON s.dept_id = d.dept_id
+    INNER JOIN TblDesignations des ON e.desig_id = des.desig_id
+    LEFT JOIN TblEmpM approver_emp ON l.approved_by = approver_emp.emp_id AND COALESCE(l.approver_type, 'employee') = 'employee'
+    LEFT JOIN TblEmpS approver ON approver_emp.emp_det_id = approver.emp_det_id
+    LEFT JOIN TblUsers admin_user ON l.approved_by = admin_user.user_id AND COALESCE(l.approver_type, 'employee') = 'admin'
+    WHERE (@status IS NULL OR l.status = @status)
+    AND (@emp_id IS NULL OR l.emp_id = @emp_id)
+    ORDER BY l.applied_date DESC;
+END;
+GO
+
+-- Drop and recreate sp_GetEmployeeLeaves to ensure it handles admin approvers
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_GetEmployeeLeaves')
+BEGIN
+    DROP PROCEDURE sp_GetEmployeeLeaves;
+    PRINT 'Dropped existing sp_GetEmployeeLeaves procedure';
+END
+
+CREATE PROCEDURE sp_GetEmployeeLeaves
+    @emp_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        l.leave_id,
+        l.leave_type,
+        l.start_date,
+        l.end_date,
+        l.days_requested,
+        l.reason,
+        l.status,
+        l.applied_date,
+        l.approved_by,
+        COALESCE(l.approver_type, 'employee') as approver_type,
+        CASE 
+            WHEN COALESCE(l.approver_type, 'employee') = 'admin' THEN COALESCE(admin_user.username, 'Admin')
+            ELSE COALESCE(approver.name, 'Unknown')
+        END as approved_by_name,
+        l.approved_date,
+        l.comments
+    FROM TblLeaves l
+    LEFT JOIN TblEmpM approver_emp ON l.approved_by = approver_emp.emp_id AND COALESCE(l.approver_type, 'employee') = 'employee'
+    LEFT JOIN TblEmpS approver ON approver_emp.emp_det_id = approver.emp_det_id
+    LEFT JOIN TblUsers admin_user ON l.approved_by = admin_user.user_id AND COALESCE(l.approver_type, 'employee') = 'admin'
+    WHERE l.emp_id = @emp_id
+    ORDER BY l.applied_date DESC;
+END;
+GO
+
+PRINT 'Admin leave approval migration completed successfully!';
+PRINT 'Admins can now approve leave applications without foreign key constraint errors.';
+
+-- =============================================
 -- WORK HOURS MIGRATION (For Existing Databases)
 -- =============================================
 -- This section adds work hours fields to existing databases
@@ -675,10 +914,43 @@ BEGIN
     PRINT 'work_end_time field already exists';
 END
 
--- Update existing records to have default work hours (9 AM - 5 PM)
+-- Add salary field if it doesn't exist
+IF NOT EXISTS (
+    SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME = 'TblEmpM' AND COLUMN_NAME = 'salary'
+)
+BEGIN
+    ALTER TABLE TblEmpM 
+    ADD salary DECIMAL(10, 2) DEFAULT 50000.00 NOT NULL;
+    PRINT 'salary field added successfully';
+END
+ELSE
+BEGIN
+    PRINT 'salary field already exists';
+END
+
+-- Add bonus field if it doesn't exist
+IF NOT EXISTS (
+    SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME = 'TblEmpM' AND COLUMN_NAME = 'bonus'
+)
+BEGIN
+    ALTER TABLE TblEmpM 
+    ADD bonus DECIMAL(10, 2) DEFAULT 0.00;
+    PRINT 'bonus field added successfully';
+END
+ELSE
+BEGIN
+    PRINT 'bonus field already exists';
+END
+
+-- Update existing records to have default work hours (9 AM - 5 PM) and salary/bonus
 UPDATE TblEmpM 
-SET work_start_time = '09:00:00', work_end_time = '17:00:00'
-WHERE work_start_time IS NULL OR work_end_time IS NULL;
+SET work_start_time = COALESCE(work_start_time, '09:00:00'), 
+    work_end_time = COALESCE(work_end_time, '17:00:00'),
+    salary = COALESCE(salary, 50000.00),
+    bonus = COALESCE(bonus, 0.00)
+WHERE work_start_time IS NULL OR work_end_time IS NULL OR salary IS NULL OR bonus IS NULL;
 
 PRINT 'Updated existing records with default work hours (9:00 AM - 5:00 PM)';
 
@@ -706,6 +978,8 @@ BEGIN
         s.dept_id,
         e.work_start_time,
         e.work_end_time,
+        e.salary,
+        e.bonus,
         d.name as department_name,
         s.name as section_name,
         des.title as designation_title,
@@ -721,9 +995,9 @@ BEGIN
     PRINT 'Recreated view vw_EmployeeDetails with work hours fields';
 END
 
-PRINT 'Work hours migration completed successfully!';
-PRINT 'All employees now have default work hours: 9:00 AM - 5:00 PM';
-PRINT 'You can customize work hours for individual employees through the application.';
+PRINT 'Work hours and salary migration completed successfully!';
+PRINT 'All employees now have default work hours: 9:00 AM - 5:00 PM, salary: PKR 50,000, bonus: PKR 0';
+PRINT 'You can customize work hours, salary, and bonus for individual employees through the application.';
 
 -- =============================================
 -- END WORK HOURS MIGRATION

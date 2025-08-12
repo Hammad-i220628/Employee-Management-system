@@ -23,7 +23,9 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
     role_id: '',
     type: 'editable',
     work_start_time: '09:00',
-    work_end_time: '17:00'
+    work_end_time: '17:00',
+    salary: '50000',
+    bonus: '0'
   });
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -61,7 +63,9 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
         role_id: String(employee.role_id),
         type: employee.type,
         work_start_time: startTime,
-        work_end_time: endTime
+        work_end_time: endTime,
+        salary: String(employee.salary || 50000),
+        bonus: String(employee.bonus || 0)
       });
       setSelectedDepartment(String(employee.dept_id));
       setOriginalName(employee.name);
@@ -134,6 +138,16 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
         if (formData.work_end_time !== originalWorkEndTime) {
           updatePayload.work_end_time = (formData.work_end_time || '17:00') + ':00';
         }
+        
+        // Include salary and bonus if provided
+        if (formData.salary) {
+          updatePayload.salary = parseFloat(formData.salary);
+        }
+        
+        if (formData.bonus) {
+          updatePayload.bonus = parseFloat(formData.bonus);
+        }
+        
         console.log('Updating employee payload:', updatePayload);
         
         // Check if employee is unassigned (emp_id = 0)
@@ -430,6 +444,48 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 Default work hours are 9:00 AM to 5:00 PM, but can be customized for each employee.
+              </p>
+            </div>
+
+            {/* Salary & Bonus Section */}
+            <div className="col-span-2">
+              <h4 className="text-md font-semibold text-gray-800 mb-3">Compensation</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="salary" className="block text-sm font-medium text-gray-700 mb-1">
+                    Salary (PKR)
+                  </label>
+                  <Input
+                    id="salary"
+                    name="salary"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.salary || '50000'}
+                    onChange={handleChange}
+                    placeholder="50000"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="bonus" className="block text-sm font-medium text-gray-700 mb-1">
+                    Bonus (PKR)
+                  </label>
+                  <Input
+                    id="bonus"
+                    name="bonus"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.bonus || '0'}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Default salary is PKR 50,000 and bonus is PKR 0, but can be customized for each employee.
               </p>
             </div>
           </>

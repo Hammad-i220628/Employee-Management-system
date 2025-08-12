@@ -12,6 +12,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ onManageEmployees }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [pendingLeavesCount, setPendingLeavesCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,10 +28,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onManageEmployees }) => {
 
       setEmployees(employeeData);
       setDepartments(departmentData);
+      
+      // Load pending leaves count
+      await loadPendingLeavesCount();
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadPendingLeavesCount = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/leaves?status=pending', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPendingLeavesCount(data.data?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error loading pending leaves count:', error);
+      setPendingLeavesCount(0);
     }
   };
 
@@ -41,7 +63,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onManageEmployees }) => {
     totalEmployees: nonAdminEmployees.length,
     totalDepartments: departments.length,
     activeEmployees: nonAdminEmployees.filter(emp => emp.status === 'Active' || emp.status === 'Changed').length,
-    changedEmployees: 0 // Always show 0 since we treat all as active
+    pendingLeaves: pendingLeavesCount
   };
 
   const StatCard = ({ title, value, icon: Icon, color = 'blue' }: any) => (
@@ -111,8 +133,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onManageEmployees }) => {
           color="emerald"
         />
         <StatCard
-          title="Changed Status"
-          value={stats.changedEmployees}
+          title="Pending Leaves"
+          value={stats.pendingLeaves}
           icon={AlertCircle}
           color="orange"
         />

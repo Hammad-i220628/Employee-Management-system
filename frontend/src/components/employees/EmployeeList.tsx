@@ -47,7 +47,7 @@ export const EmployeeList: React.FC = () => {
     try {
       // For unassigned employees (emp_id = 0), use emp_det_id
       // For assigned employees (emp_id > 0), use emp_id
-      const deleteId = employee.emp_id === 0 ? `det/${employee.emp_det_id}` : employee.emp_id;
+      const deleteId = employee.emp_id === 0 ? 'det/' + employee.emp_det_id : employee.emp_id;
       await employeeAPI.delete(deleteId);
       await loadEmployees();
     } catch (error: any) {
@@ -65,11 +65,11 @@ export const EmployeeList: React.FC = () => {
     const baseClasses = "px-2 py-1 text-xs font-medium rounded-full";
     switch (status.toLowerCase()) {
       case 'active':
-        return `${baseClasses} bg-green-100 text-green-800`;
+        return baseClasses + ' bg-green-100 text-green-800';
       case 'changed':
-        return `${baseClasses} bg-green-100 text-green-800`;
+        return baseClasses + ' bg-green-100 text-green-800';
       default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
+        return baseClasses + ' bg-gray-100 text-gray-800';
     }
   };
 
@@ -77,14 +77,73 @@ export const EmployeeList: React.FC = () => {
     const baseClasses = "px-2 py-1 text-xs font-medium rounded-full";
     switch (type.toLowerCase()) {
       case 'fixed':
-        return `${baseClasses} bg-red-100 text-red-800`;
+        return baseClasses + ' bg-red-100 text-red-800';
       case 'editable':
-        return `${baseClasses} bg-blue-100 text-blue-800`;
+        return baseClasses + ' bg-blue-100 text-blue-800';
       case 'unassigned':
-        return `${baseClasses} bg-orange-100 text-orange-800`;
+        return baseClasses + ' bg-orange-100 text-orange-800';
       default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
+        return baseClasses + ' bg-gray-100 text-gray-800';
     }
+  };
+
+  const renderWorkHours = (employee: Employee) => {
+    if (!employee.work_start_time || !employee.work_end_time) {
+      return null;
+    }
+
+    try {
+      const startTime = new Date('1970-01-01T' + employee.work_start_time);
+      const endTime = new Date('1970-01-01T' + employee.work_end_time);
+      const startFormatted = startTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+      const endFormatted = endTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+      const timeRange = startFormatted + ' - ' + endFormatted;
+      
+      return (
+        <div>
+          <span className="font-medium text-gray-700">Work Hours:</span>
+          <span className="ml-2 text-gray-600">{timeRange}</span>
+        </div>
+      );
+    } catch (error) {
+      const fallbackTime = employee.work_start_time + ' - ' + employee.work_end_time;
+      return (
+        <div>
+          <span className="font-medium text-gray-700">Work Hours:</span>
+          <span className="ml-2 text-gray-600">{fallbackTime}</span>
+        </div>
+      );
+    }
+  };
+
+  const renderSalaryBonus = (employee: Employee) => {
+    const hasSalary = employee.salary && employee.salary > 0;
+    const hasBonus = employee.bonus && employee.bonus > 0;
+    
+    if (!hasSalary && !hasBonus) {
+      return null;
+    }
+    
+    return (
+      <div className="border-t pt-2 mt-2">
+        {hasSalary && (
+          <div>
+            <span className="font-medium text-gray-700">Salary:</span>
+            <span className="ml-2 text-gray-600">
+              PKR {Number(employee.salary).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+        )}
+        {hasBonus && (
+          <div>
+            <span className="font-medium text-gray-700">Bonus:</span>
+            <span className="ml-2 text-green-600">
+              +PKR {Number(employee.bonus).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -112,7 +171,7 @@ export const EmployeeList: React.FC = () => {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {employees.map((employee) => (
-          <Card key={employee.emp_id === 0 ? `unassigned-${employee.emp_det_id}` : employee.emp_id} className="p-6">
+          <Card key={employee.emp_id === 0 ? 'unassigned-' + employee.emp_det_id : employee.emp_id} className="p-6">
             <div className="space-y-4">
               <div className="flex justify-between items-start">
                 <div>
@@ -157,22 +216,8 @@ export const EmployeeList: React.FC = () => {
                   <span className="font-medium text-gray-700">Role:</span>
                   <span className="ml-2 text-gray-600">{employee.role_name}</span>
                 </div>
-                {employee.work_start_time && employee.work_end_time && (
-                  <div>
-                    <span className="font-medium text-gray-700">Work Hours:</span>
-                    <span className="ml-2 text-gray-600">
-                      {(() => {
-                        try {
-                          const startTime = new Date(`1970-01-01T${employee.work_start_time}`);
-                          const endTime = new Date(`1970-01-01T${employee.work_end_time}`);
-                          return `${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-                        } catch (error) {
-                          return `${employee.work_start_time} - ${employee.work_end_time}`;
-                        }
-                      })()}
-                    </span>
-                  </div>
-                )}
+                {renderWorkHours(employee)}
+                {renderSalaryBonus(employee)}
               </div>
 
               <div className="flex gap-2 pt-4">

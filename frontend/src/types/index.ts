@@ -51,6 +51,8 @@ export interface Employee {
   dept_id: number;
   work_start_time?: string;
   work_end_time?: string;
+  salary?: number;
+  bonus?: number;
   department_name?: string;
   section_name?: string;
   designation_title?: string;
@@ -70,6 +72,8 @@ export interface EmployeeFormData {
   type: 'fixed' | 'editable';
   work_start_time?: string;
   work_end_time?: string;
+  salary?: string; // String for form input, will be converted to number in backend
+  bonus?: string; // String for form input, will be converted to number in backend
 }
 
 export interface ApiResponse<T> {

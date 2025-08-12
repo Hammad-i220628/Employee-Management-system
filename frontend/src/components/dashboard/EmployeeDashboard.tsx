@@ -4,7 +4,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Modal } from '../ui/Modal';
-import { User, Calendar, Building, Mail, Briefcase, Badge, LogOut, Clock, Plus, FileText, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { User, Calendar, Building, Mail, Briefcase, Badge, LogOut, Clock, Plus, FileText, CheckCircle, XCircle, AlertCircle, DollarSign } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface EmployeeData {
@@ -16,6 +16,8 @@ interface EmployeeData {
   status: string;
   work_start_time: string;
   work_end_time: string;
+  salary?: number;
+  bonus?: number;
   department_name: string;
   section_name: string;
   designation_title: string;
@@ -424,6 +426,34 @@ export const EmployeeDashboard: React.FC = () => {
                 }
               })()} 
             />
+            {(employeeData.salary && employeeData.salary > 0) || (employeeData.bonus && employeeData.bonus > 0) ? (
+              <div className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg">
+                <div className="flex-shrink-0">
+                  <DollarSign className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-grow">
+                  <p className="text-sm font-medium text-gray-600 mb-2">Compensation</p>
+                  <div className="space-y-1">
+                    {employeeData.salary && employeeData.salary > 0 && (
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">Salary:</span>
+                        <span className="ml-2 text-lg font-semibold text-gray-900">
+                          PKR {Number(employeeData.salary).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                    {employeeData.bonus && employeeData.bonus > 0 && (
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">Bonus:</span>
+                        <span className="ml-2 text-lg font-semibold text-green-600">
+                          +PKR {Number(employeeData.bonus).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>
