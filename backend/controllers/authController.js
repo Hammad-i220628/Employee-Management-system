@@ -31,51 +31,58 @@ const register = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    console.log('Login attempt:', username, password);
-    if (!username || !password) {
-      return res.status(400).json({ message: 'Username/email and password are required' });
-    }
-    const pool = await getConnection();
-    // Fetch user by username or email
-    const result = await pool.request()
-      .input('username', sql.VarChar(50), username)
-      .input('email', sql.VarChar(100), username)
-      .query(`SELECT * FROM TblUsers WHERE username = @username OR email = @email`);
-    console.log('User from DB:', result.recordset[0]);
-    if (result.recordset.length === 0) {
-      console.log('No user found');
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    const user = result.recordset[0];
-    console.log('Stored hash:', user.password_hash);
-    const isMatch = await comparePassword(password, user.password_hash);
-    console.log('Password match:', isMatch);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    const token = jwt.sign(
-      { userId: user.user_id, username: user.username, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
-    );
-    res.json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.user_id,
-        username: user.username,
-        email: user.email,
-        role: user.role
+  const login = async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      console.log('Login attempt:', username, password);
+      if (!username || !password) {
+        return res.status(400).json({ message: 'Username/email and password are required' });
       }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+      const pool = await getConnection();
+      // Fetch user by username or email and also get emp_id if exists
+      const result = await pool.request()
+        .input('username', sql.VarChar(50), username)
+        .input('email', sql.VarChar(100), username)
+        .query(`
+          SELECT u.*, e.emp_id
+          FROM TblUsers u
+          LEFT JOIN TblEmpS ed ON u.email = ed.email
+          LEFT JOIN TblEmpM e ON ed.emp_det_id = e.emp_det_id
+          WHERE u.username = @username OR u.email = @email
+        `);
+      console.log('User from DB:', result.recordset[0]);
+      if (result.recordset.length === 0) {
+        console.log('No user found');
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+      const user = result.recordset[0];
+      console.log('Stored hash:', user.password_hash);
+      const isMatch = await comparePassword(password, user.password_hash);
+      console.log('Password match:', isMatch);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+      const token = jwt.sign(
+        { userId: user.user_id, username: user.username, email: user.email, role: user.role, emp_id: user.emp_id },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN }
+      );
+      res.json({
+        message: 'Login successful',
+        token,
+        user: {
+          id: user.user_id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          emp_id: user.emp_id // Include emp_id for leave applications
+        }
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  };
 
 module.exports = {
   register,

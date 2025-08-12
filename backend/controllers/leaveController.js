@@ -45,7 +45,7 @@ const leaveController = {
     }
   },
 
-  // Get all leave applications (Admin view)
+  // Get all leave applications (Admin view and Employee filtered view)
   getLeaveApplications: async (req, res) => {
     try {
       const { status, emp_id } = req.query;
@@ -53,8 +53,20 @@ const leaveController = {
       const pool = await poolPromise;
       const request = pool.request();
       
+      // If emp_id is provided, use the employee-specific procedure instead
+      if (emp_id) {
+        request.input('emp_id', sql.Int, parseInt(emp_id));
+        const result = await request.execute('sp_GetEmployeeLeaves');
+        
+        res.json({
+          success: true,
+          data: result.recordset
+        });
+        return;
+      }
+      
+      // For admin - get all leave applications
       if (status) request.input('status', sql.VarChar(20), status);
-      if (emp_id) request.input('emp_id', sql.Int, parseInt(emp_id));
       
       const result = await request.execute('sp_GetLeaveApplications');
       
