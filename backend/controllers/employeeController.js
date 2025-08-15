@@ -450,15 +450,24 @@ const deleteEmployee = async (req, res) => {
         .query('DELETE FROM TblUsers WHERE email = @email');
       console.log('Deleted from TblUsers table');
       
-      // 2. Delete from TblEmpM table if employee has assignments
+      // 2. Delete attendance records if employee has assignments
       if (employee.emp_id > 0) {
         await transaction.request()
           .input('emp_id', sql.Int, employee.emp_id)
+          .query('DELETE FROM TblAttendance WHERE emp_id = @emp_id');
+        console.log('Deleted attendance records from TblAttendance table');
+        
+        // Note: TblLeaves has ON DELETE CASCADE, so they will be automatically deleted
+        // when TblEmpM record is deleted
+        
+        // 3. Delete from TblEmpM table (this will also cascade delete TblLeaves)
+        await transaction.request()
+          .input('emp_id', sql.Int, employee.emp_id)
           .query('DELETE FROM TblEmpM WHERE emp_id = @emp_id');
-        console.log('Deleted from TblEmpM table');
+        console.log('Deleted from TblEmpM table (TblLeaves automatically cascaded)');
       }
       
-      // 3. Finally delete from TblEmpS table (employee details)
+      // 4. Finally delete from TblEmpS table (employee details)
       await transaction.request()
         .input('emp_det_id', sql.Int, employee.emp_det_id)
         .query('DELETE FROM TblEmpS WHERE emp_det_id = @emp_det_id');
