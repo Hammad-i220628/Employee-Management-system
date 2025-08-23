@@ -21,4 +21,10 @@ router.delete('/:attendance_id', attendanceController.deleteAttendance);
 // GET /api/attendance/employee/:emp_id - Get attendance report for a specific employee
 router.get('/employee/:emp_id', attendanceController.getEmployeeAttendanceReport);
 
+// POST /api/attendance/barcode - Mark attendance using barcode
+router.post('/barcode', attendanceController.markAttendanceByBarcode);
+
+// GET /api/attendance/employee/barcode/:barcode - Get employee by barcode
+router.get('/employee/barcode/:barcode', attendanceController.getEmployeeByBarcode);
+
 module.exports = router;

@@ -11,6 +11,7 @@ const departmentRoutes = require('./routes/departments');
 const dashboardRoutes = require('./routes/dashboard');
 const attendanceRoutes = require('./routes/attendance');
 const leaveRoutes = require('./routes/leaves');
+const barcodeRoutes = require('./routes/barcode');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,6 +28,7 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/leaves', leaveRoutes);
+app.use('/api/barcode', barcodeRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

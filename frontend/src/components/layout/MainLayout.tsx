@@ -7,6 +7,7 @@ import { EmployeeList } from '../employees/EmployeeList';
 import { DepartmentManagement } from '../departments/DepartmentManagement';
 import { RoleManagement } from '../roles/RoleManagement';
 import { AttendanceManagement } from '../attendance/AttendanceManagement';
+import { BarcodeManagement } from '../barcode/BarcodeManagement';
 import { LeaveManagement } from '../leaves/LeaveManagement';
 import { Settings } from '../settings/Settings';
 import { useAuth } from '../../contexts/AuthContext';
@@ -39,6 +40,8 @@ export const MainLayout: React.FC = () => {
         return <RoleManagement />;
       case 'attendance':
         return <AttendanceManagement />;
+      case 'barcodes':
+        return <BarcodeManagement />;
       case 'leaves':
         return <LeaveManagement />;
       default:

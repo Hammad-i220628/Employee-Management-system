@@ -213,10 +213,71 @@ const getEmployeeAttendanceReport = async (req, res) => {
   }
 };
 
+// Mark attendance using barcode
+const markAttendanceByBarcode = async (req, res) => {
+  try {
+    const { barcode, date } = req.body;
+    const pool = await getConnection();
+
+    console.log('Barcode scan data:', { barcode, date });
+
+    const result = await pool.request()
+      .input('barcode', sql.VarChar, barcode)
+      .input('date', sql.Date, date || new Date().toISOString().split('T')[0])
+      .execute('sp_MarkAttendanceByBarcode');
+
+    console.log('Barcode scan result:', result.recordset[0]);
+    
+    const response = result.recordset[0];
+    if (response.success) {
+      res.json({ 
+        success: true, 
+        message: response.message, 
+        employeeName: response.employee_name 
+      });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        message: response.message, 
+        employeeName: response.employee_name 
+      });
+    }
+  } catch (error) {
+    console.error('Error marking attendance by barcode:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to mark attendance: ' + error.message 
+    });
+  }
+};
+
+// Get employee by barcode
+const getEmployeeByBarcode = async (req, res) => {
+  try {
+    const { barcode } = req.params;
+    const pool = await getConnection();
+
+    const result = await pool.request()
+      .input('barcode', sql.VarChar, barcode)
+      .execute('sp_GetEmployeeByBarcode');
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ message: 'Employee not found with this barcode' });
+    }
+
+    res.json(result.recordset[0]);
+  } catch (error) {
+    console.error('Error fetching employee by barcode:', error);
+    res.status(500).json({ message: 'Failed to fetch employee information' });
+  }
+};
+
 module.exports = {
   getAttendanceByDate,
   addOrUpdateAttendance,
   getAttendanceStats,
   deleteAttendance,
-  getEmployeeAttendanceReport
+  getEmployeeAttendanceReport,
+  markAttendanceByBarcode,
+  getEmployeeByBarcode
 };

@@ -4,7 +4,8 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Modal } from '../ui/Modal';
-import { Calendar, Clock, Users, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
+import { FixedZXingScanner } from '../barcode/FixedZXingScanner';
+import { Calendar, Clock, Users, CheckCircle, XCircle, Search, Filter, Scan } from 'lucide-react';
 
 interface Employee {
   emp_id: number;
@@ -36,6 +37,9 @@ export const AttendanceManagement: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [scanResult, setScanResult] = useState('');
+  const [lastScannedEmployee, setLastScannedEmployee] = useState('');
 
   // Form state for adding/editing attendance
   const [attendanceForm, setAttendanceForm] = useState({
@@ -147,6 +151,47 @@ export const AttendanceManagement: React.FC = () => {
       setError(''); // Clear any previous errors
     } catch (error: any) {
       setError(error.message || 'Failed to save attendance');
+    }
+  };
+
+  // Handle barcode scan
+  const handleBarcodeScan = async (barcode: string) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/attendance/barcode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          barcode: barcode,
+          date: selectedDate
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setScanResult(`✅ Attendance marked for ${data.employeeName}`);
+        setLastScannedEmployee(data.employeeName);
+        await loadAttendanceRecords(); // Refresh the records
+        setError('');
+      } else {
+        setScanResult(`❌ ${data.message}`);
+        if (data.employeeName) {
+          setLastScannedEmployee(data.employeeName);
+        }
+      }
+      
+      // Clear scan result after 5 seconds
+      setTimeout(() => {
+        setScanResult('');
+        setLastScannedEmployee('');
+      }, 5000);
+      
+    } catch (error: any) {
+      setScanResult(`❌ Error: ${error.message}`);
+      setTimeout(() => setScanResult(''), 5000);
     }
   };
 
@@ -275,6 +320,37 @@ export const AttendanceManagement: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Barcode Scanner Section */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                onClick={() => setShowBarcodeScanner(true)}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
+              >
+                <Scan className="w-4 h-4" />
+                <span>Scan Barcode</span>
+              </Button>
+              {scanResult && (
+                <div className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                  scanResult.includes('✅') 
+                    ? 'bg-green-100 text-green-800 border border-green-200'
+                    : 'bg-red-100 text-red-800 border border-red-200'
+                }`}>
+                  {scanResult}
+                </div>
+              )}
+            </div>
+            {lastScannedEmployee && (
+              <div className="text-sm text-gray-600">
+                Last scanned: <strong>{lastScannedEmployee}</strong>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters and Search */}
       <Card>
@@ -440,6 +516,14 @@ export const AttendanceManagement: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Barcode Scanner Modal */}
+      <FixedZXingScanner
+        isOpen={showBarcodeScanner}
+        onClose={() => setShowBarcodeScanner(false)}
+        onScan={handleBarcodeScan}
+        employeeName="Employee Card"
+      />
     </div>
   );
 };

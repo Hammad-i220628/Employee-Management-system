@@ -56,7 +56,8 @@ CREATE TABLE TblEmpS (
     name VARCHAR(100) NOT NULL,
     cnic VARCHAR(15) UNIQUE NOT NULL,
     start_date DATE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL
+    email VARCHAR(100) UNIQUE NOT NULL,
+    barcode VARCHAR(100) UNIQUE NULL -- Code 128 barcode for attendance
 );
 GO
 
@@ -323,6 +324,128 @@ BEGIN
     AND (@start_date IS NULL OR a.date >= @start_date)
     AND (@end_date IS NULL OR a.date <= @end_date)
     ORDER BY a.date DESC;
+END;
+GO
+
+-- =============================================
+-- BARCODE MANAGEMENT PROCEDURES
+-- =============================================
+
+-- Stored Procedure: Generate Barcode for Employee
+CREATE PROCEDURE sp_GenerateEmployeeBarcode
+    @emp_det_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @barcode VARCHAR(100);
+    DECLARE @emp_id_str VARCHAR(10);
+    DECLARE @random_suffix VARCHAR(10);
+    
+    -- Generate barcode using employee ID and random suffix
+    SET @emp_id_str = RIGHT('0000' + CAST(@emp_det_id AS VARCHAR(10)), 4);
+    SET @random_suffix = RIGHT('000000' + CAST(ABS(CHECKSUM(NEWID())) % 1000000 AS VARCHAR(6)), 6);
+    SET @barcode = 'EMP' + @emp_id_str + @random_suffix;
+    
+    -- Update employee with barcode
+    UPDATE TblEmpS 
+    SET barcode = @barcode 
+    WHERE emp_det_id = @emp_det_id;
+    
+    SELECT @barcode as barcode, 'Barcode generated successfully' as message;
+END;
+GO
+
+-- Stored Procedure: Update Employee Barcode
+CREATE PROCEDURE sp_UpdateEmployeeBarcode
+    @emp_det_id INT,
+    @barcode VARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Check if barcode already exists for another employee
+    IF EXISTS (SELECT 1 FROM TblEmpS WHERE barcode = @barcode AND emp_det_id <> @emp_det_id)
+    BEGIN
+        RAISERROR('Barcode already exists for another employee.', 16, 1);
+        RETURN;
+    END
+    
+    -- Update employee barcode
+    UPDATE TblEmpS 
+    SET barcode = @barcode 
+    WHERE emp_det_id = @emp_det_id;
+    
+    SELECT 'Barcode updated successfully' as message;
+END;
+GO
+
+-- Stored Procedure: Verify Barcode and Mark Attendance
+CREATE PROCEDURE sp_MarkAttendanceByBarcode
+    @barcode VARCHAR(100),
+    @date DATE = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @emp_id INT;
+    DECLARE @employee_name VARCHAR(100);
+    
+    -- Set default date to today if not provided
+    IF @date IS NULL
+        SET @date = CAST(GETDATE() AS DATE);
+    
+    -- Find employee by barcode
+    SELECT @emp_id = e.emp_id, @employee_name = ed.name
+    FROM TblEmpS ed
+    INNER JOIN TblEmpM e ON ed.emp_det_id = e.emp_det_id
+    WHERE ed.barcode = @barcode AND e.status = 'Active';
+    
+    -- Check if employee found
+    IF @emp_id IS NULL
+    BEGIN
+        SELECT 'Invalid barcode or employee not found' as message, 0 as success;
+        RETURN;
+    END
+    
+    -- Check if attendance already marked for today
+    IF EXISTS (SELECT 1 FROM TblAttendance WHERE emp_id = @emp_id AND date = @date)
+    BEGIN
+        SELECT 'Attendance already marked for today' as message, 0 as success, @employee_name as employee_name;
+        RETURN;
+    END
+    
+    -- Mark attendance as Present
+    INSERT INTO TblAttendance (emp_id, date, status, notes)
+    VALUES (@emp_id, @date, 'Present', 'Marked via barcode scan');
+    
+    SELECT 'Attendance marked successfully' as message, 1 as success, @employee_name as employee_name;
+END;
+GO
+
+-- Stored Procedure: Get Employee by Barcode
+CREATE PROCEDURE sp_GetEmployeeByBarcode
+    @barcode VARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        e.emp_id,
+        ed.emp_det_id,
+        ed.name,
+        ed.email,
+        ed.barcode,
+        e.status,
+        d.name as department_name,
+        s.name as section_name,
+        des.title as designation_title
+    FROM TblEmpS ed
+    INNER JOIN TblEmpM e ON ed.emp_det_id = e.emp_det_id
+    INNER JOIN TblSections s ON e.section_id = s.section_id
+    INNER JOIN TblDepartments d ON s.dept_id = d.dept_id
+    INNER JOIN TblDesignations des ON e.desig_id = des.desig_id
+    WHERE ed.barcode = @barcode;
 END;
 GO
 
@@ -998,6 +1121,31 @@ END
 PRINT 'Work hours and salary migration completed successfully!';
 PRINT 'All employees now have default work hours: 9:00 AM - 5:00 PM, salary: PKR 50,000, bonus: PKR 0';
 PRINT 'You can customize work hours, salary, and bonus for individual employees through the application.';
+
+-- =============================================
+-- BARCODE MIGRATION (For Existing Databases)
+-- =============================================
+-- This section adds barcode field to existing databases
+
+PRINT 'Checking and adding barcode field if it does not exist...';
+
+-- Add barcode field if it doesn't exist
+IF NOT EXISTS (
+    SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME = 'TblEmpS' AND COLUMN_NAME = 'barcode'
+)
+BEGIN
+    ALTER TABLE TblEmpS 
+    ADD barcode VARCHAR(100) UNIQUE NULL;
+    PRINT 'barcode field added successfully';
+END
+ELSE
+BEGIN
+    PRINT 'barcode field already exists';
+END
+
+PRINT 'Barcode migration completed successfully!';
+PRINT 'You can now generate barcodes for employees and use barcode scanning for attendance.';
 
 -- =============================================
 -- END WORK HOURS MIGRATION
