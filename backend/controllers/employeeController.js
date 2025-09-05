@@ -139,12 +139,12 @@ const addEmployee = async (req, res) => {
     
     if (cnic_count > 0) {
       console.log('CNIC already exists:', cnic);
-      return res.status(400).json({ message: 'CNIC already exists' });
+      return res.status(400).json({ message: `CNIC '${cnic}' already exists. Please use a different CNIC.` });
     }
     
     if (email_count_emps > 0 || email_count_users > 0) {
       console.log('Email already exists:', email, 'in TblEmpS:', email_count_emps, 'in TblUsers:', email_count_users);
-      return res.status(400).json({ message: 'Email already exists' });
+      return res.status(400).json({ message: `Email '${email}' already exists. Please use a different email address.` });
     }
     
     console.log('No duplicates found, proceeding with employee creation');
@@ -157,20 +157,46 @@ const addEmployee = async (req, res) => {
       await transaction.begin();
       console.log('Transaction started successfully');
       
-      // Add employee details using stored procedure with error handling
+      // Add employee details directly with better error handling
       console.log('Adding employee details with:', { name, cnic, start_date, email });
+      
+      // Double-check for duplicates inside transaction to prevent race conditions
+      const txDuplicateCheck = await transaction.request()
+        .input('cnic', sql.VarChar(15), cnic)
+        .input('email', sql.VarChar(100), email)
+        .query(`
+          SELECT 
+            (SELECT COUNT(*) FROM TblEmpS WHERE cnic = @cnic) as cnic_count,
+            (SELECT COUNT(*) FROM TblEmpS WHERE email = @email) as email_count
+        `);
+      
+      const { cnic_count: tx_cnic_count, email_count: tx_email_count } = txDuplicateCheck.recordset[0];
+      
+      if (tx_cnic_count > 0) {
+        throw new Error(`CNIC '${cnic}' already exists in the system. Please use a different CNIC.`);
+      }
+      
+      if (tx_email_count > 0) {
+        throw new Error(`Email '${email}' already exists in the system. Please use a different email address.`);
+      }
+      
+      // Insert employee details directly (barcode will be NULL initially until scanned)
       const empDetailsResult = await transaction.request()
         .input('name', sql.VarChar(100), name)
         .input('cnic', sql.VarChar(15), cnic)
         .input('start_date', sql.Date, start_date)
         .input('email', sql.VarChar(100), email)
-        .execute('sp_AddEmployeeDetails');
+        .query(`
+          INSERT INTO TblEmpS (name, cnic, start_date, email)
+          VALUES (@name, @cnic, @start_date, @email);
+          SELECT SCOPE_IDENTITY() as emp_det_id, 'Employee details added successfully' as message;
+        `);
 
       console.log('Employee details result:', empDetailsResult);
       
-      // Check for error in stored procedure result
-      if (empDetailsResult.recordset[0].error_message) {
-        throw new Error(empDetailsResult.recordset[0].error_message);
+      // Check if insertion was successful
+      if (!empDetailsResult.recordset || empDetailsResult.recordset.length === 0) {
+        throw new Error('Failed to create employee details record - no result returned');
       }
       
       const emp_det_id = empDetailsResult.recordset[0].emp_det_id;
@@ -286,7 +312,18 @@ const addEmployee = async (req, res) => {
     // Handle specific SQL Server errors
     if (error.number === 2627) { // Unique constraint violation
       console.log('Unique constraint violation detected');
-      return res.status(400).json({ message: 'CNIC or Email already exists (constraint violation)' });
+      if (error.message.includes('cnic')) {
+        return res.status(400).json({ message: 'This CNIC is already registered in the system. Please use a different CNIC.' });
+      } else if (error.message.includes('email')) {
+        return res.status(400).json({ message: 'This email address is already registered in the system. Please use a different email.' });
+      } else {
+        return res.status(400).json({ message: 'Duplicate data detected. CNIC or email already exists in the system.' });
+      }
+    }
+    
+    if (error.number === 2627 || error.number === 2601) { // Additional unique constraint error codes
+      console.log('Unique constraint violation detected (code:', error.number, ')');
+      return res.status(400).json({ message: 'Duplicate data detected. This employee information already exists in the system.' });
     }
     
     if (error.number === 2) { // Cannot open database

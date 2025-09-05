@@ -121,18 +121,6 @@ export const OvertimePolicy: React.FC = () => {
         <h2 className="text-xl font-semibold text-gray-800">Overtime Policy Configuration</h2>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-blue-800">About Overtime Policy</h3>
-            <p className="text-blue-700 text-sm mt-1">
-              Configure whether employees can work overtime beyond standard hours (9 AM - 5 PM) 
-              and whether they should receive bonus compensation for overtime work.
-            </p>
-          </div>
-        </div>
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

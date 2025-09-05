@@ -92,18 +92,6 @@ export const TaxDeductionPolicy: React.FC = () => {
         <h2 className="text-xl font-semibold text-gray-800">Tax Deduction Policy Configuration</h2>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-blue-800">About Tax Deduction Policy</h3>
-            <p className="text-blue-700 text-sm mt-1">
-              Configure tax deduction rate to be automatically applied to employee salaries. 
-              The default rate is set to 5% as requested, with options to set exemption limits.
-            </p>
-          </div>
-        </div>
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Tax Enabled */}

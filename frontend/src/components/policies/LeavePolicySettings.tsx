@@ -88,18 +88,6 @@ export const LeavePolicySettings: React.FC = () => {
         <h2 className="text-xl font-semibold text-gray-800">Leave Policy Configuration</h2>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-blue-800">About Leave Policy</h3>
-            <p className="text-blue-700 text-sm mt-1">
-              Configure leave limits and salary deduction settings for employees who exceed 
-              their allowed leave quota. This helps maintain attendance discipline.
-            </p>
-          </div>
-        </div>
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
