@@ -6,6 +6,7 @@ import { Select } from '../ui/Select';
 import { Modal } from '../ui/Modal';
 import { User, Calendar, Building, Mail, Briefcase, Badge, LogOut, Clock, Plus, FileText, CheckCircle, XCircle, AlertCircle, DollarSign } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { EmployeePoliciesView } from '../employee/EmployeePoliciesView';
 
 interface EmployeeData {
   emp_id?: number; // Add emp_id for leave applications
@@ -471,19 +472,6 @@ export const EmployeeDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Apply for Leave Button - Simple and Direct */}
-      <Card className="shadow-md">
-        <CardContent className="p-6">
-          <Button 
-            onClick={() => setShowApplyModal(true)} 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center space-x-2 py-4 text-lg font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Apply for Leave</span>
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Additional Information */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="shadow-md">
@@ -542,6 +530,23 @@ export const EmployeeDashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Company Policies Section */}
+      <EmployeePoliciesView />
+
+      {/* Apply for Leave Button - Simple and Direct */}
+      <Card className="shadow-md">
+        <CardContent className="p-6">
+          <Button 
+            onClick={() => setShowApplyModal(true)} 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center space-x-2 py-4 text-lg font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Apply for Leave</span>
+          </Button>
+        </CardContent>
+      </Card>
+
 
       {/* My Leave Applications */}
       <Card className="shadow-md">

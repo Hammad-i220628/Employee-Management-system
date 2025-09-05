@@ -37,9 +37,15 @@ router.put('/leave', auth, adminAuth, updateLeavePolicy);
 router.get('/tax', auth, adminAuth, getTaxDeductionPolicy);
 router.put('/tax', auth, adminAuth, updateTaxDeductionPolicy);
 
-// Employee Overtime Routes
+// Employee Overtime Routes (Admin only)
 router.get('/employees-overtime', auth, adminAuth, getEmployeesWithOvertime);
 router.post('/employee-overtime', auth, adminAuth, addEmployeeOvertime);
 router.put('/overtime-status', auth, adminAuth, updateOvertimeStatus);
+
+// Employee read-only policy routes (accessible to all authenticated users)
+router.get('/view/overtime', auth, getOvertimePolicy);
+router.get('/view/leave', auth, getLeavePolicy);
+router.get('/view/tax', auth, getTaxDeductionPolicy);
+router.get('/view/all', auth, getAllPolicies);
 
 module.exports = router;
