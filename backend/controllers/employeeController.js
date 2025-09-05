@@ -103,10 +103,11 @@ const getEmployee = async (req, res) => {
 const addEmployee = async (req, res) => {
   let transaction = null;
   try {
+    console.log('=== ADD EMPLOYEE REQUEST START ===');
     console.log('Received request body:', req.body);
     const { name, cnic, start_date, email, password, section_id, desig_id, type, salary, bonus } = req.body;
 
-      console.log('Extracted fields:', { name, cnic, start_date, email, section_id, desig_id, type, salary, bonus });
+    console.log('Extracted fields:', { name, cnic, start_date, email, section_id, desig_id, type, salary, bonus });
 
     if (!name || !cnic || !start_date || !email) {
       console.log('Validation failed - missing required fields');
@@ -114,12 +115,39 @@ const addEmployee = async (req, res) => {
     }
 
     const pool = await getConnection();
-    console.log('Database connection established');
+    console.log('Database connection established, pool connected:', pool.connected);
     
     // Ensure pool is connected
     if (!pool.connected) {
       throw new Error('Database connection not available');
     }
+
+    // Check for existing CNIC or Email BEFORE starting transaction
+    console.log('Checking for existing CNIC or Email...');
+    const duplicateCheck = await pool.request()
+      .input('cnic', sql.VarChar(15), cnic)
+      .input('email', sql.VarChar(100), email)
+      .query(`
+        SELECT 
+          (SELECT COUNT(*) FROM TblEmpS WHERE cnic = @cnic) as cnic_count,
+          (SELECT COUNT(*) FROM TblEmpS WHERE email = @email) as email_count_emps,
+          (SELECT COUNT(*) FROM TblUsers WHERE email = @email) as email_count_users
+      `);
+    
+    const { cnic_count, email_count_emps, email_count_users } = duplicateCheck.recordset[0];
+    console.log('Duplicate check results:', { cnic_count, email_count_emps, email_count_users });
+    
+    if (cnic_count > 0) {
+      console.log('CNIC already exists:', cnic);
+      return res.status(400).json({ message: 'CNIC already exists' });
+    }
+    
+    if (email_count_emps > 0 || email_count_users > 0) {
+      console.log('Email already exists:', email, 'in TblEmpS:', email_count_emps, 'in TblUsers:', email_count_users);
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+    
+    console.log('No duplicates found, proceeding with employee creation');
 
     // Start transaction
     transaction = new sql.Transaction(pool);
@@ -129,23 +157,28 @@ const addEmployee = async (req, res) => {
       await transaction.begin();
       console.log('Transaction started successfully');
       
-      // Add employee details (name, cnic, start_date, email)
+      // Add employee details using stored procedure with error handling
       console.log('Adding employee details with:', { name, cnic, start_date, email });
       const empDetailsResult = await transaction.request()
         .input('name', sql.VarChar(100), name)
         .input('cnic', sql.VarChar(15), cnic)
         .input('start_date', sql.Date, start_date)
         .input('email', sql.VarChar(100), email)
-        .query(`
-          INSERT INTO TblEmpS (name, cnic, start_date, email)
-          VALUES (@name, @cnic, @start_date, @email);
-          SELECT SCOPE_IDENTITY() AS emp_det_id;
-        `);
+        .execute('sp_AddEmployeeDetails');
 
-      console.log('Employee details added:', empDetailsResult);
-      const emp_det_id = empDetailsResult.recordset[0].emp_det_id;
+      console.log('Employee details result:', empDetailsResult);
       
-      // If section_id and desig_id are provided, create assignment in TblEmpM
+      // Check for error in stored procedure result
+      if (empDetailsResult.recordset[0].error_message) {
+        throw new Error(empDetailsResult.recordset[0].error_message);
+      }
+      
+      const emp_det_id = empDetailsResult.recordset[0].emp_det_id;
+      if (!emp_det_id) {
+        throw new Error('Failed to create employee details record');
+      }
+      
+      // If section_id and desig_id are provided, create assignment using stored procedure
       let emp_id = null;
       if (section_id && desig_id) {
         const assignmentResult = await transaction.request()
@@ -153,15 +186,21 @@ const addEmployee = async (req, res) => {
           .input('section_id', sql.Int, section_id)
           .input('desig_id', sql.Int, desig_id)
           .input('type', sql.VarChar(10), type || 'editable')
+          .input('work_start_time', sql.Time, parseTimeToDate('09:00:00', 9, 0))
+          .input('work_end_time', sql.Time, parseTimeToDate('17:00:00', 17, 0))
           .input('salary', sql.Decimal(10, 2), salary || 50000.00)
           .input('bonus', sql.Decimal(10, 2), bonus || 0.00)
-          .query(`
-            INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, status, salary, bonus)
-            VALUES (@emp_det_id, @section_id, @desig_id, @type, 'Active', @salary, @bonus);
-            SELECT SCOPE_IDENTITY() AS emp_id;
-          `);
+          .execute('sp_AddEmployee');
+        
+        // Check for error in stored procedure result
+        if (assignmentResult.recordset[0].error_message) {
+          throw new Error(assignmentResult.recordset[0].error_message);
+        }
         
         emp_id = assignmentResult.recordset[0].emp_id;
+        if (!emp_id) {
+          throw new Error('Failed to create employee assignment');
+        }
         console.log('Employee assignment created with emp_id:', emp_id);
       }
       
@@ -172,24 +211,46 @@ const addEmployee = async (req, res) => {
         const password_hash = await bcrypt.hash(password, saltRounds);
         
         // Generate username from email (part before @)
-        const username = email.split('@')[0];
+        let username = email.split('@')[0];
         
-        await transaction.request()
+        // Check if username already exists and make it unique if necessary
+        const usernameCheck = await transaction.request()
           .input('username', sql.VarChar(50), username)
-          .input('email', sql.VarChar(100), email)
-          .input('password_hash', sql.VarChar(255), password_hash)
-          .input('role', sql.VarChar(20), 'Employee')
-          .query(`
-            INSERT INTO TblUsers (username, email, password_hash, role)
-            VALUES (@username, @email, @password_hash, @role)
-          `);
+          .query('SELECT COUNT(*) as count FROM TblUsers WHERE username = @username');
+          
+        if (usernameCheck.recordset[0].count > 0) {
+          // Make username unique by appending timestamp
+          username = username + '_' + Date.now().toString().substr(-4);
+          console.log('Username conflict resolved, using:', username);
+        }
         
-        console.log('User account created for:', email);
+        console.log('Creating user account with username:', username, 'email:', email);
+        
+        try {
+          await transaction.request()
+            .input('username', sql.VarChar(50), username)
+            .input('email', sql.VarChar(100), email)
+            .input('password_hash', sql.VarChar(255), password_hash)
+            .input('role', sql.VarChar(20), 'Employee')
+            .query(`
+              INSERT INTO TblUsers (username, email, password_hash, role)
+              VALUES (@username, @email, @password_hash, @role)
+            `);
+          
+          console.log('User account created successfully for:', email, 'with username:', username);
+        } catch (userError) {
+          console.error('Failed to create user account:', userError.message);
+          // Continue without user account - employee details are still created
+          console.log('Continuing without user account creation');
+        }
       }
       
       // Commit transaction
+      console.log('Committing transaction...');
       await transaction.commit();
+      console.log('Transaction committed successfully');
 
+      console.log('=== ADD EMPLOYEE SUCCESS ===');
       res.status(201).json({ 
         message: password 
           ? 'Employee added successfully with login credentials' 
@@ -198,15 +259,46 @@ const addEmployee = async (req, res) => {
         emp_id: emp_id
       });
     } catch (transactionError) {
-      await transaction.rollback();
+      console.error('Transaction error:', transactionError);
+      if (transaction) {
+        try {
+          await transaction.rollback();
+          console.log('Transaction rolled back');
+        } catch (rollbackError) {
+          console.error('Rollback error:', rollbackError);
+        }
+      }
       throw transactionError;
     }
   } catch (error) {
-    if (error.number === 2627) {
-      return res.status(400).json({ message: 'CNIC or Email already exists' });
+    console.error('=== ADD EMPLOYEE ERROR ===');
+    console.error('Error details:', {
+      message: error.message,
+      number: error.number,
+      state: error.state,
+      class: error.class,
+      serverName: error.serverName,
+      procName: error.procName,
+      lineNumber: error.lineNumber,
+      stack: error.stack
+    });
+    
+    // Handle specific SQL Server errors
+    if (error.number === 2627) { // Unique constraint violation
+      console.log('Unique constraint violation detected');
+      return res.status(400).json({ message: 'CNIC or Email already exists (constraint violation)' });
     }
-    console.error('Add employee error:', error);
-    res.status(500).json({ message: 'Server error: ' + error.message });
+    
+    if (error.number === 2) { // Cannot open database
+      console.log('Database connection error');
+      return res.status(500).json({ message: 'Database connection failed' });
+    }
+    
+    // Generic error response
+    res.status(500).json({ 
+      message: 'Server error: ' + error.message,
+      errorCode: error.number || 'unknown'
+    });
   }
 };
 

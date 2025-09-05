@@ -181,11 +181,36 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
           password: formData.password
         };
         console.log('Creating employee payload:', createPayload);
-        await employeeAPI.create(createPayload);
+        console.log('Making API call to create employee...');
+        
+        try {
+          console.log('=== FRONTEND: CREATING EMPLOYEE ===');
+          console.log('Request payload:', createPayload);
+          console.log('API URL:', `http://localhost:5000/api/employees`);
+          console.log('Authorization token exists:', !!localStorage.getItem('token'));
+          
+          const response = await employeeAPI.create(createPayload);
+          console.log('=== FRONTEND: SUCCESS RESPONSE ===');
+          console.log('API Response:', response);
+        } catch (apiError: any) {
+          console.error('=== FRONTEND: ERROR RESPONSE ===');
+          console.error('Error message:', apiError.message);
+          console.error('Response status:', apiError.response?.status);
+          console.error('Response statusText:', apiError.response?.statusText);
+          console.error('Response data:', apiError.response?.data);
+          console.error('Request config:', apiError.config);
+          console.error('Full error object:', apiError);
+          throw apiError;
+        }
       }
       onSubmit();
     } catch (error: any) {
-      setError(error.message || 'Failed to save employee');
+      console.error('Form submission error:', {
+        message: error.message,
+        response: error.response?.data,
+        stack: error.stack
+      });
+      setError(error.response?.data?.message || error.message || 'Failed to save employee');
     } finally {
       setLoading(false);
     }
@@ -194,6 +219,11 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ employee, onSubmit, 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear any existing errors when user starts typing
+    if (error) {
+      setError('');
+    }
     
     // Clear designation when role changes
     if (name === 'role_id') {

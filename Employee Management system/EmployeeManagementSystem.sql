@@ -127,10 +127,15 @@ CREATE PROCEDURE sp_AddEmployeeDetails
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO TblEmpS (name, cnic, start_date, email)
-    VALUES (@name, @cnic, @start_date, @email);
+    BEGIN TRY
+        INSERT INTO TblEmpS (name, cnic, start_date, email)
+        VALUES (@name, @cnic, @start_date, @email);
 
-    SELECT SCOPE_IDENTITY() AS emp_det_id;
+        SELECT 'Employee details added successfully' as message, SCOPE_IDENTITY() AS emp_det_id;
+    END TRY
+    BEGIN CATCH
+        SELECT ERROR_MESSAGE() as error_message, 0 as emp_det_id;
+    END CATCH
 END;
 GO
 
@@ -147,10 +152,34 @@ CREATE PROCEDURE sp_AddEmployee
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, work_start_time, work_end_time, salary, bonus)
-    VALUES (@emp_det_id, @section_id, @desig_id, @type, @work_start_time, @work_end_time, @salary, @bonus);
-    
-    SELECT SCOPE_IDENTITY() AS emp_id;
+    BEGIN TRY
+        -- Validate foreign key references
+        IF NOT EXISTS (SELECT 1 FROM TblEmpS WHERE emp_det_id = @emp_det_id)
+        BEGIN
+            RAISERROR('Invalid emp_det_id: Employee details record not found.', 16, 1);
+            RETURN;
+        END
+
+        IF NOT EXISTS (SELECT 1 FROM TblSections WHERE section_id = @section_id)
+        BEGIN
+            RAISERROR('Invalid section_id: Section not found.', 16, 1);
+            RETURN;
+        END
+
+        IF NOT EXISTS (SELECT 1 FROM TblDesignations WHERE desig_id = @desig_id)
+        BEGIN
+            RAISERROR('Invalid desig_id: Designation not found.', 16, 1);
+            RETURN;
+        END
+
+        INSERT INTO TblEmpM (emp_det_id, section_id, desig_id, type, work_start_time, work_end_time, salary, bonus)
+        VALUES (@emp_det_id, @section_id, @desig_id, @type, @work_start_time, @work_end_time, @salary, @bonus);
+        
+        SELECT 'Employee added successfully' as message, SCOPE_IDENTITY() AS emp_id;
+    END TRY
+    BEGIN CATCH
+        SELECT ERROR_MESSAGE() as error_message, 0 as emp_id;
+    END CATCH
 END;
 GO
 
@@ -449,35 +478,73 @@ BEGIN
 END;
 GO
 
--- Departments
-INSERT INTO TblDepartments (name) VALUES 
-('HR'), 
-('IT'), 
-('Finance');
+-- =============================================
+-- INSERT REFERENCE DATA IN CORRECT ORDER
+-- This ensures all foreign key dependencies are satisfied
+-- =============================================
+PRINT 'Inserting reference data in correct order...';
+
+-- Insert Departments first (no dependencies)
+IF NOT EXISTS (SELECT 1 FROM TblDepartments)
+BEGIN
+    INSERT INTO TblDepartments (name) VALUES 
+    ('HR'), 
+    ('IT'), 
+    ('Finance');
+    PRINT 'Departments inserted successfully.';
+END
+ELSE
+BEGIN
+    PRINT 'Departments already exist.';
+END
 GO
 
--- Sections
-INSERT INTO TblSections (name, dept_id) VALUES 
-('Recruitment', 1), 
-('Employee Relations', 1),
-('Software Development', 2), 
-('IT Support', 2),
-('Accounts Payable', 3), 
-('Budgeting & Planning', 3);
+-- Insert Sections (depends on Departments)
+IF NOT EXISTS (SELECT 1 FROM TblSections)
+BEGIN
+    INSERT INTO TblSections (name, dept_id) VALUES 
+    ('Recruitment', 1), 
+    ('Employee Relations', 1),
+    ('Software Development', 2), 
+    ('IT Support', 2),
+    ('Accounts Payable', 3), 
+    ('Budgeting & Planning', 3);
+    PRINT 'Sections inserted successfully.';
+END
+ELSE
+BEGIN
+    PRINT 'Sections already exist.';
+END
 GO
 
--- Roles
-INSERT INTO TblRoles (name) VALUES 
-('Employee'),   -- 1
-('HR');         -- 2
+-- Insert Roles (no dependencies)
+IF NOT EXISTS (SELECT 1 FROM TblRoles)
+BEGIN
+    INSERT INTO TblRoles (name) VALUES 
+    ('Employee'),   -- 1
+    ('HR');         -- 2
+    PRINT 'Roles inserted successfully.';
+END
+ELSE
+BEGIN
+    PRINT 'Roles already exist.';
+END
 GO
 
--- Designations
-INSERT INTO TblDesignations (title, role_id) VALUES 
-('Software Engineer', 1),      -- 1
-('Accounts Executive', 1),     -- 2
-('HR Manager', 2),             -- 3
-('Recruitment Officer', 2);    -- 4
+-- Insert Designations (depends on Roles)
+IF NOT EXISTS (SELECT 1 FROM TblDesignations)
+BEGIN
+    INSERT INTO TblDesignations (title, role_id) VALUES 
+    ('Software Engineer', 1),      -- 1
+    ('Accounts Executive', 1),     -- 2
+    ('HR Manager', 2),             -- 3
+    ('Recruitment Officer', 2);    -- 4
+    PRINT 'Designations inserted successfully.';
+END
+ELSE
+BEGIN
+    PRINT 'Designations already exist.';
+END
 GO
 
 -- Add Admin User and Employee (if not exists)
@@ -496,7 +563,79 @@ BEGIN
     SELECT @admin_emp_det_id = SCOPE_IDENTITY();
     
     EXEC sp_AddEmployee @admin_emp_det_id, 1, 1, 'fixed', '09:00:00', '17:00:00', 50000.00, 0.00;
-END
+END;
+GO
+
+-- Missing Stored Procedure: Get Employee Procedure (referenced in your error)
+CREATE PROCEDURE GetEmployeeProcedure
+    @emp_id INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    IF @emp_id IS NULL
+    BEGIN
+        -- Get all employees
+        SELECT 
+            e.emp_id,
+            ed.emp_det_id,
+            ed.name,
+            ed.cnic,
+            ed.start_date,
+            ed.email,
+            ed.barcode,
+            e.type,
+            e.status,
+            e.section_id,
+            e.desig_id,
+            e.work_start_time,
+            e.work_end_time,
+            e.salary,
+            e.bonus,
+            d.name as department_name,
+            s.name as section_name,
+            des.title as designation_title,
+            r.name as role_name
+        FROM TblEmpM e
+        INNER JOIN TblEmpS ed ON e.emp_det_id = ed.emp_det_id
+        INNER JOIN TblSections s ON e.section_id = s.section_id
+        INNER JOIN TblDepartments d ON s.dept_id = d.dept_id
+        INNER JOIN TblDesignations des ON e.desig_id = des.desig_id
+        INNER JOIN TblRoles r ON des.role_id = r.role_id
+        ORDER BY ed.name;
+    END
+    ELSE
+    BEGIN
+        -- Get specific employee
+        SELECT 
+            e.emp_id,
+            ed.emp_det_id,
+            ed.name,
+            ed.cnic,
+            ed.start_date,
+            ed.email,
+            ed.barcode,
+            e.type,
+            e.status,
+            e.section_id,
+            e.desig_id,
+            e.work_start_time,
+            e.work_end_time,
+            e.salary,
+            e.bonus,
+            d.name as department_name,
+            s.name as section_name,
+            des.title as designation_title,
+            r.name as role_name
+        FROM TblEmpM e
+        INNER JOIN TblEmpS ed ON e.emp_det_id = ed.emp_det_id
+        INNER JOIN TblSections s ON e.section_id = s.section_id
+        INNER JOIN TblDepartments d ON s.dept_id = d.dept_id
+        INNER JOIN TblDesignations des ON e.desig_id = des.desig_id
+        INNER JOIN TblRoles r ON des.role_id = r.role_id
+        WHERE e.emp_id = @emp_id;
+    END
+END;
 GO
 
 -- View to get complete employee information (updated with new table names)
@@ -1146,6 +1285,499 @@ END
 
 PRINT 'Barcode migration completed successfully!';
 PRINT 'You can now generate barcodes for employees and use barcode scanning for attendance.';
+
+-- =============================================
+-- MANAGEMENT POLICIES TABLES AND PROCEDURES
+-- =============================================
+-- This section creates tables and procedures for Management Policies:
+-- Overtime Policy, Leave Policy, Tax Deduction Policy
+
+PRINT 'Creating Management Policies tables...';
+
+-- Create Overtime Policy Table
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'TblOvertimePolicy')
+BEGIN
+    CREATE TABLE TblOvertimePolicy (
+        policy_id INT IDENTITY(1,1) PRIMARY KEY,
+        company_id INT DEFAULT 1, -- Assuming single company for now
+        overtime_allowed BIT NOT NULL DEFAULT 0, -- Whether overtime is allowed outside 9-5
+        bonus_enabled BIT NOT NULL DEFAULT 0, -- Whether bonus is given for overtime
+        bonus_rate DECIMAL(5,2) DEFAULT 1.50, -- Bonus rate (e.g., 1.5x = 1.50)
+        standard_work_hours INT DEFAULT 8, -- Standard work hours per day
+        overtime_threshold_minutes INT DEFAULT 480, -- Minutes after which overtime starts (8 hours = 480 minutes)
+        created_at DATETIME DEFAULT GETDATE(),
+        updated_at DATETIME DEFAULT GETDATE(),
+        created_by INT NULL,
+        updated_by INT NULL
+    );
+    PRINT 'TblOvertimePolicy table created successfully';
+END
+ELSE
+BEGIN
+    PRINT 'TblOvertimePolicy table already exists';
+END
+
+-- Create Leave Policy Table
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'TblLeavePolicy')
+BEGIN
+    CREATE TABLE TblLeavePolicy (
+        policy_id INT IDENTITY(1,1) PRIMARY KEY,
+        company_id INT DEFAULT 1, -- Assuming single company for now
+        salary_deduction_enabled BIT NOT NULL DEFAULT 0, -- Whether to cut salary for excess leaves
+        max_allowed_leaves_per_month INT DEFAULT 2, -- Max leaves allowed per month without deduction
+        max_allowed_leaves_per_year INT DEFAULT 24, -- Max leaves allowed per year without deduction
+        deduction_rate DECIMAL(5,2) DEFAULT 1.00, -- Rate of deduction (1.00 = full day salary)
+        grace_period_days INT DEFAULT 0, -- Grace period before deduction starts
+        created_at DATETIME DEFAULT GETDATE(),
+        updated_at DATETIME DEFAULT GETDATE(),
+        created_by INT NULL,
+        updated_by INT NULL
+    );
+    PRINT 'TblLeavePolicy table created successfully';
+END
+ELSE
+BEGIN
+    PRINT 'TblLeavePolicy table already exists';
+END
+
+-- Create Tax Deduction Policy Table
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'TblTaxDeductionPolicy')
+BEGIN
+    CREATE TABLE TblTaxDeductionPolicy (
+        policy_id INT IDENTITY(1,1) PRIMARY KEY,
+        company_id INT DEFAULT 1, -- Assuming single company for now
+        tax_enabled BIT NOT NULL DEFAULT 1, -- Whether tax deduction is enabled
+        tax_rate DECIMAL(5,2) DEFAULT 5.00, -- Tax rate percentage (5.00 = 5%)
+        tax_exemption_limit DECIMAL(10,2) DEFAULT 0.00, -- Salary limit below which no tax is applied
+        effective_from DATE DEFAULT GETDATE(), -- When this tax policy becomes effective
+        created_at DATETIME DEFAULT GETDATE(),
+        updated_at DATETIME DEFAULT GETDATE(),
+        created_by INT NULL,
+        updated_by INT NULL
+    );
+    PRINT 'TblTaxDeductionPolicy table created successfully';
+END
+ELSE
+BEGIN
+    PRINT 'TblTaxDeductionPolicy table already exists';
+END
+
+-- Insert default policies if they don't exist
+IF NOT EXISTS (SELECT 1 FROM TblOvertimePolicy)
+BEGIN
+    INSERT INTO TblOvertimePolicy (overtime_allowed, bonus_enabled, bonus_rate, standard_work_hours, overtime_threshold_minutes)
+    VALUES (0, 0, 1.50, 8, 480);
+    PRINT 'Default overtime policy inserted';
+END
+
+IF NOT EXISTS (SELECT 1 FROM TblLeavePolicy)
+BEGIN
+    INSERT INTO TblLeavePolicy (salary_deduction_enabled, max_allowed_leaves_per_month, max_allowed_leaves_per_year, deduction_rate)
+    VALUES (0, 2, 24, 1.00);
+    PRINT 'Default leave policy inserted';
+END
+
+IF NOT EXISTS (SELECT 1 FROM TblTaxDeductionPolicy)
+BEGIN
+    INSERT INTO TblTaxDeductionPolicy (tax_enabled, tax_rate, tax_exemption_limit)
+    VALUES (1, 5.00, 0.00);
+    PRINT 'Default tax deduction policy inserted';
+END
+
+-- Create indexes for better performance
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_OvertimePolicy_CompanyId')
+BEGIN
+    CREATE INDEX IX_OvertimePolicy_CompanyId ON TblOvertimePolicy(company_id);
+END
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_LeavePolicy_CompanyId')
+BEGIN
+    CREATE INDEX IX_LeavePolicy_CompanyId ON TblLeavePolicy(company_id);
+END
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_TaxDeductionPolicy_CompanyId')
+BEGIN
+    CREATE INDEX IX_TaxDeductionPolicy_CompanyId ON TblTaxDeductionPolicy(company_id);
+END
+
+-- =============================================
+-- MANAGEMENT POLICIES STORED PROCEDURES
+-- =============================================
+
+-- Get Overtime Policy
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_GetOvertimePolicy')
+BEGIN
+    DROP PROCEDURE sp_GetOvertimePolicy;
+END
+GO
+
+CREATE PROCEDURE sp_GetOvertimePolicy
+    @company_id INT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        policy_id,
+        company_id,
+        overtime_allowed,
+        bonus_enabled,
+        bonus_rate,
+        standard_work_hours,
+        overtime_threshold_minutes,
+        created_at,
+        updated_at
+    FROM TblOvertimePolicy 
+    WHERE company_id = @company_id;
+END;
+GO
+
+-- Update Overtime Policy
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_UpdateOvertimePolicy')
+BEGIN
+    DROP PROCEDURE sp_UpdateOvertimePolicy;
+END
+GO
+
+CREATE PROCEDURE sp_UpdateOvertimePolicy
+    @policy_id INT,
+    @overtime_allowed BIT,
+    @bonus_enabled BIT,
+    @bonus_rate DECIMAL(5,2),
+    @updated_by INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    UPDATE TblOvertimePolicy
+    SET overtime_allowed = @overtime_allowed,
+        bonus_enabled = @bonus_enabled,
+        bonus_rate = @bonus_rate,
+        updated_at = GETDATE(),
+        updated_by = @updated_by
+    WHERE policy_id = @policy_id;
+    
+    SELECT 'Overtime policy updated successfully' as message;
+END;
+GO
+
+-- Get Leave Policy
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_GetLeavePolicy')
+BEGIN
+    DROP PROCEDURE sp_GetLeavePolicy;
+END
+GO
+
+CREATE PROCEDURE sp_GetLeavePolicy
+    @company_id INT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        policy_id,
+        company_id,
+        salary_deduction_enabled,
+        max_allowed_leaves_per_month,
+        max_allowed_leaves_per_year,
+        deduction_rate,
+        grace_period_days,
+        created_at,
+        updated_at
+    FROM TblLeavePolicy 
+    WHERE company_id = @company_id;
+END;
+GO
+
+-- Update Leave Policy
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_UpdateLeavePolicy')
+BEGIN
+    DROP PROCEDURE sp_UpdateLeavePolicy;
+END
+GO
+
+CREATE PROCEDURE sp_UpdateLeavePolicy
+    @policy_id INT,
+    @salary_deduction_enabled BIT,
+    @max_allowed_leaves_per_month INT,
+    @max_allowed_leaves_per_year INT,
+    @deduction_rate DECIMAL(5,2),
+    @updated_by INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    UPDATE TblLeavePolicy
+    SET salary_deduction_enabled = @salary_deduction_enabled,
+        max_allowed_leaves_per_month = @max_allowed_leaves_per_month,
+        max_allowed_leaves_per_year = @max_allowed_leaves_per_year,
+        deduction_rate = @deduction_rate,
+        updated_at = GETDATE(),
+        updated_by = @updated_by
+    WHERE policy_id = @policy_id;
+    
+    SELECT 'Leave policy updated successfully' as message;
+END;
+GO
+
+-- Get Tax Deduction Policy
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_GetTaxDeductionPolicy')
+BEGIN
+    DROP PROCEDURE sp_GetTaxDeductionPolicy;
+END
+GO
+
+CREATE PROCEDURE sp_GetTaxDeductionPolicy
+    @company_id INT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        policy_id,
+        company_id,
+        tax_enabled,
+        tax_rate,
+        tax_exemption_limit,
+        effective_from,
+        created_at,
+        updated_at
+    FROM TblTaxDeductionPolicy 
+    WHERE company_id = @company_id;
+END;
+GO
+
+-- Update Tax Deduction Policy
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_UpdateTaxDeductionPolicy')
+BEGIN
+    DROP PROCEDURE sp_UpdateTaxDeductionPolicy;
+END
+GO
+
+CREATE PROCEDURE sp_UpdateTaxDeductionPolicy
+    @policy_id INT,
+    @tax_enabled BIT,
+    @tax_rate DECIMAL(5,2),
+    @tax_exemption_limit DECIMAL(10,2),
+    @updated_by INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    UPDATE TblTaxDeductionPolicy
+    SET tax_enabled = @tax_enabled,
+        tax_rate = @tax_rate,
+        tax_exemption_limit = @tax_exemption_limit,
+        updated_at = GETDATE(),
+        updated_by = @updated_by
+    WHERE policy_id = @policy_id;
+    
+    SELECT 'Tax deduction policy updated successfully' as message;
+END;
+GO
+
+-- Create Employee Overtime Tracking Table
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'TblEmployeeOvertime')
+BEGIN
+    CREATE TABLE TblEmployeeOvertime (
+        overtime_id INT IDENTITY(1,1) PRIMARY KEY,
+        emp_id INT NOT NULL,
+        date DATE NOT NULL,
+        overtime_hours DECIMAL(4,2) DEFAULT 0.00, -- Hours worked beyond standard time
+        bonus_rate DECIMAL(5,2) DEFAULT 1.50, -- Multiplier for bonus calculation
+        bonus_amount DECIMAL(10,2) DEFAULT 0.00, -- Calculated bonus amount
+        base_hourly_rate DECIMAL(10,2) DEFAULT 0.00, -- Employee's hourly rate
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+        notes NVARCHAR(500) NULL,
+        created_at DATETIME DEFAULT GETDATE(),
+        updated_at DATETIME DEFAULT GETDATE(),
+        FOREIGN KEY (emp_id) REFERENCES TblEmpM(emp_id) ON DELETE CASCADE,
+        CONSTRAINT UQ_EmpOvertime_Date UNIQUE(emp_id, date)
+    );
+    PRINT 'TblEmployeeOvertime table created successfully';
+END
+ELSE
+BEGIN
+    PRINT 'TblEmployeeOvertime table already exists';
+END
+
+-- Create indexes for better performance
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_EmployeeOvertime_EmpId')
+BEGIN
+    CREATE INDEX IX_EmployeeOvertime_EmpId ON TblEmployeeOvertime(emp_id);
+END
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_EmployeeOvertime_Date')
+BEGIN
+    CREATE INDEX IX_EmployeeOvertime_Date ON TblEmployeeOvertime(date);
+END
+
+-- Stored Procedure: Get Employees with Overtime Information
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_GetEmployeesWithOvertime')
+BEGIN
+    DROP PROCEDURE sp_GetEmployeesWithOvertime;
+END
+GO
+
+CREATE PROCEDURE sp_GetEmployeesWithOvertime
+    @start_date DATE = NULL,
+    @end_date DATE = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Set default date range if not provided (current month)
+    IF @start_date IS NULL
+        SET @start_date = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1);
+    
+    IF @end_date IS NULL
+        SET @end_date = EOMONTH(GETDATE());
+    
+    SELECT 
+        e.emp_id,
+        ed.name as employee_name,
+        ed.email,
+        e.salary,
+        d.name as department_name,
+        s.name as section_name,
+        des.title as designation_title,
+        -- Calculate hourly rate (assuming 8 hours per day, ~22 working days per month)
+        (e.salary / (22 * 8)) as hourly_rate,
+        -- Overtime data for the specified period
+        COALESCE(ot_summary.total_overtime_hours, 0) as total_overtime_hours,
+        COALESCE(ot_summary.total_bonus_amount, 0) as total_bonus_amount,
+        COALESCE(ot_summary.approved_overtime_hours, 0) as approved_overtime_hours,
+        COALESCE(ot_summary.approved_bonus_amount, 0) as approved_bonus_amount,
+        CASE WHEN ot_summary.emp_id IS NOT NULL THEN 1 ELSE 0 END as has_overtime
+    FROM TblEmpM e
+    INNER JOIN TblEmpS ed ON e.emp_det_id = ed.emp_det_id
+    INNER JOIN TblSections s ON e.section_id = s.section_id
+    INNER JOIN TblDepartments d ON s.dept_id = d.dept_id
+    INNER JOIN TblDesignations des ON e.desig_id = des.desig_id
+    LEFT JOIN (
+        SELECT 
+            emp_id,
+            SUM(overtime_hours) as total_overtime_hours,
+            SUM(bonus_amount) as total_bonus_amount,
+            SUM(CASE WHEN status = 'approved' THEN overtime_hours ELSE 0 END) as approved_overtime_hours,
+            SUM(CASE WHEN status = 'approved' THEN bonus_amount ELSE 0 END) as approved_bonus_amount
+        FROM TblEmployeeOvertime
+        WHERE date BETWEEN @start_date AND @end_date
+        GROUP BY emp_id
+    ) ot_summary ON e.emp_id = ot_summary.emp_id
+    WHERE e.status = 'Active'
+    ORDER BY ed.name;
+END;
+GO
+
+-- Stored Procedure: Add/Update Employee Overtime
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_AddEmployeeOvertime')
+BEGIN
+    DROP PROCEDURE sp_AddEmployeeOvertime;
+END
+GO
+
+CREATE PROCEDURE sp_AddEmployeeOvertime
+    @emp_id INT,
+    @date DATE,
+    @overtime_hours DECIMAL(4,2),
+    @notes NVARCHAR(500) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @hourly_rate DECIMAL(10,2);
+    DECLARE @bonus_rate DECIMAL(5,2);
+    DECLARE @bonus_amount DECIMAL(10,2);
+    DECLARE @overtime_allowed BIT;
+    DECLARE @bonus_enabled BIT;
+    
+    -- Get current overtime policy
+    SELECT @overtime_allowed = overtime_allowed, @bonus_enabled = bonus_enabled, @bonus_rate = bonus_rate
+    FROM TblOvertimePolicy WHERE company_id = 1;
+    
+    -- Check if overtime is allowed
+    IF @overtime_allowed = 0
+    BEGIN
+        RAISERROR('Overtime is not allowed according to current policy.', 16, 1);
+        RETURN;
+    END
+    
+    -- Get employee salary and calculate hourly rate
+    SELECT @hourly_rate = (salary / (22 * 8)) -- Assuming 22 working days, 8 hours per day
+    FROM TblEmpM WHERE emp_id = @emp_id;
+    
+    IF @hourly_rate IS NULL
+    BEGIN
+        RAISERROR('Employee not found or salary information missing.', 16, 1);
+        RETURN;
+    END
+    
+    -- Calculate bonus amount
+    IF @bonus_enabled = 1
+        SET @bonus_amount = @overtime_hours * @hourly_rate * @bonus_rate;
+    ELSE
+        SET @bonus_amount = @overtime_hours * @hourly_rate; -- Normal rate, no bonus
+    
+    -- Insert or update overtime record
+    IF EXISTS (SELECT 1 FROM TblEmployeeOvertime WHERE emp_id = @emp_id AND date = @date)
+    BEGIN
+        UPDATE TblEmployeeOvertime
+        SET overtime_hours = @overtime_hours,
+            bonus_rate = @bonus_rate,
+            bonus_amount = @bonus_amount,
+            base_hourly_rate = @hourly_rate,
+            notes = @notes,
+            updated_at = GETDATE()
+        WHERE emp_id = @emp_id AND date = @date;
+        
+        SELECT 'Employee overtime updated successfully' as message, @bonus_amount as bonus_amount;
+    END
+    ELSE
+    BEGIN
+        INSERT INTO TblEmployeeOvertime (emp_id, date, overtime_hours, bonus_rate, bonus_amount, base_hourly_rate, notes)
+        VALUES (@emp_id, @date, @overtime_hours, @bonus_rate, @bonus_amount, @hourly_rate, @notes);
+        
+        SELECT 'Employee overtime added successfully' as message, @bonus_amount as bonus_amount;
+    END
+END;
+GO
+
+-- Stored Procedure: Approve/Reject Employee Overtime
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_UpdateOvertimeStatus')
+BEGIN
+    DROP PROCEDURE sp_UpdateOvertimeStatus;
+END
+GO
+
+CREATE PROCEDURE sp_UpdateOvertimeStatus
+    @overtime_id INT,
+    @status VARCHAR(20),
+    @notes NVARCHAR(500) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Validate status
+    IF @status NOT IN ('approved', 'rejected', 'pending')
+    BEGIN
+        RAISERROR('Invalid status. Must be approved, rejected, or pending.', 16, 1);
+        RETURN;
+    END
+    
+    UPDATE TblEmployeeOvertime
+    SET status = @status,
+        notes = COALESCE(@notes, notes),
+        updated_at = GETDATE()
+    WHERE overtime_id = @overtime_id;
+    
+    SELECT 'Overtime status updated successfully' as message;
+END;
+GO
+
+PRINT 'Employee Overtime tracking tables and procedures created successfully!';
+
+PRINT 'Management Policies tables and procedures created successfully!';
 
 -- =============================================
 -- END WORK HOURS MIGRATION

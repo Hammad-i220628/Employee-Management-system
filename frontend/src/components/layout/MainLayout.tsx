@@ -9,6 +9,7 @@ import { RoleManagement } from '../roles/RoleManagement';
 import { AttendanceManagement } from '../attendance/AttendanceManagement';
 import { BarcodeManagement } from '../barcode/BarcodeManagement';
 import { LeaveManagement } from '../leaves/LeaveManagement';
+import { ManagementPolicies } from '../policies/ManagementPolicies';
 import { Settings } from '../settings/Settings';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -44,6 +45,8 @@ export const MainLayout: React.FC = () => {
         return <BarcodeManagement />;
       case 'leaves':
         return <LeaveManagement />;
+      case 'policies':
+        return <ManagementPolicies />;
       default:
         return <Dashboard onManageEmployees={handleManageEmployees} />;
     }

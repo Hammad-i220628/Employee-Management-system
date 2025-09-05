@@ -182,4 +182,86 @@ export const roleAPI = {
   },
 };
 
+// Management Policies API
+export const policiesAPI = {
+  getAll: async () => {
+    const response = await api.get('/policies');
+    return response.data;
+  },
+  
+  getOvertimePolicy: async () => {
+    const response = await api.get('/policies/overtime');
+    return response.data;
+  },
+  
+  updateOvertimePolicy: async (data: {
+    policyId: number;
+    overtimeAllowed: boolean;
+    bonusEnabled: boolean;
+    bonusRate: number;
+  }) => {
+    const response = await api.put('/policies/overtime', data);
+    return response.data;
+  },
+  
+  getLeavePolicy: async () => {
+    const response = await api.get('/policies/leave');
+    return response.data;
+  },
+  
+  updateLeavePolicy: async (data: {
+    policyId: number;
+    salaryDeductionEnabled: boolean;
+    maxAllowedLeavesPerMonth: number;
+    maxAllowedLeavesPerYear: number;
+    deductionRate: number;
+  }) => {
+    const response = await api.put('/policies/leave', data);
+    return response.data;
+  },
+  
+  getTaxPolicy: async () => {
+    const response = await api.get('/policies/tax');
+    return response.data;
+  },
+  
+  updateTaxPolicy: async (data: {
+    policyId: number;
+    taxEnabled: boolean;
+    taxRate: number;
+    taxExemptionLimit: number;
+  }) => {
+    const response = await api.put('/policies/tax', data);
+    return response.data;
+  },
+  
+  getEmployeesWithOvertime: async (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    const response = await api.get(`/policies/employees-overtime${params.toString() ? '?' + params.toString() : ''}`);
+    return response.data;
+  },
+  
+  addEmployeeOvertime: async (data: {
+    empId: number;
+    date: string;
+    overtimeHours: number;
+    notes?: string;
+  }) => {
+    const response = await api.post('/policies/employee-overtime', data);
+    return response.data;
+  },
+  
+  updateOvertimeStatus: async (data: {
+    overtimeId: number;
+    status: string;
+    notes?: string;
+  }) => {
+    const response = await api.put('/policies/overtime-status', data);
+    return response.data;
+  },
+};
+
 export default api;
