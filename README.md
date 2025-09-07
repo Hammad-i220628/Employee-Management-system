@@ -33,7 +33,8 @@ A comprehensive web-based Employee Management System built with modern technolog
 
 ### Authentication & Authorization
 - **Secure Login/Registration** - JWT-based authentication system
-<img width="596" height="478" alt="Image" src="https://github.com/user-attachments/assets/61d02e72-bf3d-4f5d-849b-b2696e9ad7cd" />
+<img width="1916" height="1075" alt="Image" src="https://github.com/user-attachments/assets/af8c7f57-b43a-4862-9509-b383024fd1aa" />
+
 - **Role-based Access Control** - Admin and Employee role management
 - **Single Admin Constraint** - Database-level admin user restriction
 
