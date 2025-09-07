@@ -36,6 +36,8 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="1916" height="1075" alt="Image" src="https://github.com/user-attachments/assets/af8c7f57-b43a-4862-9509-b383024fd1aa" />
 
 - **Role-based Access Control** - Admin and Employee role management
+<img width="1918" height="921" alt="Image" src="https://github.com/user-attachments/assets/08061af1-1456-41d7-9a93-186ab7711369" />
+
 - **Single Admin Constraint** - Database-level admin user restriction
 
 ### Employee Management
