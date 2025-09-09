@@ -43,6 +43,7 @@ A comprehensive web-based Employee Management System built with modern technolog
 ### Employee Management
 - **Employee Registration** - Complete employee profile creation
 <img width="1901" height="933" alt="Image" src="https://github.com/user-attachments/assets/2c7e6e8c-2cd6-47ca-8497-8a0418f5cfea" />
+
 - **Department & Section Management** - Hierarchical organizational structure
 - **Designation & Role Assignment** - Flexible role and designation system
 - **Employee Status Tracking** - Active/Inactive employee management
