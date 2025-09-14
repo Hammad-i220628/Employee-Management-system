@@ -1,4 +1,4 @@
-# Employee Management System
+<img width="1895" height="1079" alt="image" src="https://github.com/user-attachments/assets/3c65fa6c-1263-432a-9960-5891206db7ff" /># Employee Management System
 
 A comprehensive web-based Employee Management System built with modern technologies for efficient workforce management, attendance tracking, and policy administration.
 
@@ -57,8 +57,9 @@ A comprehensive web-based Employee Management System built with modern technolog
 - **Barcode Scanning** - Quick attendance marking via barcode scanning
 <img width="1897" height="1079" alt="Image" src="https://github.com/user-attachments/assets/703664e9-7b53-4f06-b220-058588154569" />
 
-- **Multiple Scanner Options** - Various barcode scanner implementations
 - **Attendance Status Tracking** - Present, Absent, Late, Half Day statuses
+<img width="1895" height="1079" alt="Image" src="https://github.com/user-attachments/assets/d0e630cc-1780-488e-adca-c8016ad36daf" />
+
 - **Attendance History** - Comprehensive attendance records
 - **Real-time Updates** - Live attendance status updates
 
