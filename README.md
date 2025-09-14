@@ -66,7 +66,7 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="1919" height="802" alt="Image" src="https://github.com/user-attachments/assets/d145f4ee-f76d-4a40-807b-84f55028acc9" />
 
 - **Leave History** - Complete leave application tracking
-<img width="1898" height="500" alt="Image" src="https://github.com/user-attachments/assets/d2ebdd45-f7c8-492c-bd09-3126f136c796" />
+<img width="1902" height="1079" alt="Image" src="https://github.com/user-attachments/assets/74aed534-3701-4cf4-b98f-bbceedb273e8" />
 
 ### Policy Management
 - **Overtime Policy** - Global overtime policy management
