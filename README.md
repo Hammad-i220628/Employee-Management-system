@@ -87,8 +87,10 @@ A comprehensive web-based Employee Management System built with modern technolog
 
 ### Dashboard & Analytics
 - **Employee Dashboard** - Personalized employee view with:
-  - Personal details and statistics
-  - Organization structure overview
+  - Personal details
+<img width="1899" height="987" alt="image" src="https://github.com/user-attachments/assets/bccd6db8-ed78-49a7-8cc4-15f185ae30b8" />
+
+  - statistics and Organization structure overview
   - Company policies display
 <img width="1899" height="959" alt="Image" src="https://github.com/user-attachments/assets/4a246f4b-ebc6-44ec-93af-2f1aa69256ae" />
 
