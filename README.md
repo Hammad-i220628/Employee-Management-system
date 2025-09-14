@@ -38,8 +38,6 @@ A comprehensive web-based Employee Management System built with modern technolog
 - **Role-based Access Control** - Admin and Employee role management
 <img width="1918" height="921" alt="Image" src="https://github.com/user-attachments/assets/08061af1-1456-41d7-9a93-186ab7711369" />
 
-- **Single Admin Constraint** - Database-level admin user restriction
-
 ### Employee Management
 - **Employee Registration** - Complete employee profile creation
 <img width="1901" height="933" alt="Image" src="https://github.com/user-attachments/assets/2c7e6e8c-2cd6-47ca-8497-8a0418f5cfea" />
@@ -62,8 +60,6 @@ A comprehensive web-based Employee Management System built with modern technolog
 
 - **Attendance History** - Comprehensive attendance records
 <img width="1900" height="1079" alt="Image" src="https://github.com/user-attachments/assets/09926d0a-f1d8-403c-b1b6-9480408ceed6" />
-
-- **Real-time Updates** - Live attendance status updates
 
 ### Leave Management
 - **Leave Applications** - Employee leave request system
@@ -97,9 +93,7 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="1899" height="959" alt="Image" src="https://github.com/user-attachments/assets/4a246f4b-ebc6-44ec-93af-2f1aa69256ae" />
 
   - Leave application interface
-  - Leave history tracking
-- **Admin Dashboard** - Comprehensive management interface
-- **Real-time Statistics** - Live data visualization
+<img width="1897" height="495" alt="image" src="https://github.com/user-attachments/assets/3adab218-4938-4ab2-9496-ada2552402ff" />
 
 ### Salary & Compensation
 - **Salary Calculations** - Automated salary computation
