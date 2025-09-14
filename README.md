@@ -67,6 +67,8 @@ A comprehensive web-based Employee Management System built with modern technolog
 
 ### Leave Management
 - **Leave Applications** - Employee leave request system
+<img width="636" height="573" alt="Image" src="https://github.com/user-attachments/assets/48ad2aa4-6ae5-4adc-8c2f-ccb3d3f1fc84" />
+
 - **Leave History** - Complete leave application tracking
 - **Leave Policy Integration** - Policy-based leave management
 
