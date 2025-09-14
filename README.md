@@ -45,7 +45,7 @@ A comprehensive web-based Employee Management System built with modern technolog
 - **Department & Section Management** - Hierarchical organizational structure
 <img width="1919" height="753" alt="Image" src="https://github.com/user-attachments/assets/3c5985b8-585d-47c7-8ae3-79a84665db7a" />
 
-- **Designation & Role Assignment** - Flexible role and designation system
+- **Role & Designation Assignment** - Flexible role and designation system
 <img width="1919" height="752" alt="Image" src="https://github.com/user-attachments/assets/967cc23d-78d9-48c8-b7cb-4ba7af71e62d" />
 
 - **Barcode Integration** - Unique barcode generation for each employee via barcode scanning
