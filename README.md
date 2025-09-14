@@ -1,4 +1,4 @@
-<img width="1895" height="1079" alt="image" src="https://github.com/user-attachments/assets/3c65fa6c-1263-432a-9960-5891206db7ff" /># Employee Management System
+# Employee Management System
 
 A comprehensive web-based Employee Management System built with modern technologies for efficient workforce management, attendance tracking, and policy administration.
 
