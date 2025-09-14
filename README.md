@@ -73,6 +73,7 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="1898" height="500" alt="Image" src="https://github.com/user-attachments/assets/d2ebdd45-f7c8-492c-bd09-3126f136c796" />
 
 - **Leave Policy Integration** - Policy-based leave management
+<img width="1894" height="299" alt="Image" src="https://github.com/user-attachments/assets/ca296c56-4491-4af8-9c35-12bda8fa6e49" />
 
 ### Policy Management
 - **Company Policies Display** - Read-only policy view for employees
