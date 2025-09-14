@@ -55,6 +55,8 @@ A comprehensive web-based Employee Management System built with modern technolog
 
 ### Attendance System
 - **Barcode Scanning** - Quick attendance marking via barcode scanning
+<img width="1897" height="1079" alt="Image" src="https://github.com/user-attachments/assets/703664e9-7b53-4f06-b220-058588154569" />
+
 - **Multiple Scanner Options** - Various barcode scanner implementations
 - **Attendance Status Tracking** - Present, Absent, Late, Half Day statuses
 - **Attendance History** - Comprehensive attendance records
