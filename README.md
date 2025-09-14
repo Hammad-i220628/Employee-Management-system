@@ -91,6 +91,8 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="1899" height="987" alt="image" src="https://github.com/user-attachments/assets/bccd6db8-ed78-49a7-8cc4-15f185ae30b8" />
 
   - statistics and Organization structure overview
+<img width="1900" height="461" alt="Image" src="https://github.com/user-attachments/assets/8b20d458-c9e7-4d12-9346-d18b5383dfe2" />
+
   - Company policies display
 <img width="1899" height="959" alt="Image" src="https://github.com/user-attachments/assets/4a246f4b-ebc6-44ec-93af-2f1aa69256ae" />
 
