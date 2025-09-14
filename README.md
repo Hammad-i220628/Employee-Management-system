@@ -61,6 +61,8 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="1895" height="1079" alt="Image" src="https://github.com/user-attachments/assets/d0e630cc-1780-488e-adca-c8016ad36daf" />
 
 - **Attendance History** - Comprehensive attendance records
+<img width="1900" height="1079" alt="Image" src="https://github.com/user-attachments/assets/09926d0a-f1d8-403c-b1b6-9480408ceed6" />
+
 - **Real-time Updates** - Live attendance status updates
 
 ### Leave Management
