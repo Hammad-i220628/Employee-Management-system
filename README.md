@@ -83,7 +83,7 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="1919" height="948" alt="Image" src="https://github.com/user-attachments/assets/61218614-581d-40cc-87fe-e2ded9cdaab4" />
 
 - **Tax Deduction Policy** - Tax calculation and deduction management
-- **Policy Status Indicators** - Enabled/Disabled status with color coding
+<img width="1896" height="1077" alt="Image" src="https://github.com/user-attachments/assets/70e65c38-d480-41f4-aaf1-a56cdfc175a4" />
 
 ### Dashboard & Analytics
 - **Employee Dashboard** - Personalized employee view with:
