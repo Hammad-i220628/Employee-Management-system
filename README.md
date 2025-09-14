@@ -93,7 +93,5 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="1897" height="495" alt="image" src="https://github.com/user-attachments/assets/3adab218-4938-4ab2-9496-ada2552402ff" />
 
 ### Salary & Compensation
-- **Salary Calculations** - Automated salary computation
 - **Bonus Management** - Employee bonus tracking
-- **Tax Deductions** - Automated tax calculation system
-- **Work Hours Tracking** - Configurable work time management
+<img width="635" height="488" alt="Image" src="https://github.com/user-attachments/assets/56d1b9d2-c1ab-4c32-ba90-b91b20e4b69a" />
