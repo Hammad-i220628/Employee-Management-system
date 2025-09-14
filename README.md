@@ -70,6 +70,8 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="636" height="573" alt="Image" src="https://github.com/user-attachments/assets/48ad2aa4-6ae5-4adc-8c2f-ccb3d3f1fc84" />
 
 - **Leave History** - Complete leave application tracking
+<img width="1898" height="500" alt="Image" src="https://github.com/user-attachments/assets/d2ebdd45-f7c8-492c-bd09-3126f136c796" />
+
 - **Leave Policy Integration** - Policy-based leave management
 
 ### Policy Management
