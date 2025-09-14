@@ -76,7 +76,6 @@ A comprehensive web-based Employee Management System built with modern technolog
 <img width="1894" height="299" alt="Image" src="https://github.com/user-attachments/assets/ca296c56-4491-4af8-9c35-12bda8fa6e49" />
 
 ### Policy Management
-- **Company Policies Display** - Read-only policy view for employees
 - **Overtime Policy** - Global overtime policy management
 - **Leave Policy Settings** - Configurable leave policies
 - **Tax Deduction Policy** - Tax calculation and deduction management
@@ -87,6 +86,8 @@ A comprehensive web-based Employee Management System built with modern technolog
   - Personal details and statistics
   - Organization structure overview
   - Company policies display
+<img width="1899" height="959" alt="Image" src="https://github.com/user-attachments/assets/4a246f4b-ebc6-44ec-93af-2f1aa69256ae" />
+
   - Leave application interface
   - Leave history tracking
 - **Admin Dashboard** - Comprehensive management interface
