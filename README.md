@@ -50,8 +50,8 @@ A comprehensive web-based Employee Management System built with modern technolog
 - **Designation & Role Assignment** - Flexible role and designation system
 <img width="1919" height="752" alt="Image" src="https://github.com/user-attachments/assets/967cc23d-78d9-48c8-b7cb-4ba7af71e62d" />
 
-- **Employee Status Tracking** - Active/Inactive employee management
-- **Barcode Integration** - Unique barcode generation for each employee
+- **Barcode Integration** - Unique barcode generation for each employee via barcode scanning
+<img width="1918" height="925" alt="Image" src="https://github.com/user-attachments/assets/8c5d494c-7dbe-46bb-ac9a-4478ebf169c3" />
 
 ### Attendance System
 - **Barcode Scanning** - Quick attendance marking via barcode scanning
