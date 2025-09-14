@@ -63,13 +63,10 @@ A comprehensive web-based Employee Management System built with modern technolog
 
 ### Leave Management
 - **Leave Applications** - Employee leave request system
-<img width="636" height="573" alt="Image" src="https://github.com/user-attachments/assets/48ad2aa4-6ae5-4adc-8c2f-ccb3d3f1fc84" />
+<img width="1919" height="802" alt="Image" src="https://github.com/user-attachments/assets/d145f4ee-f76d-4a40-807b-84f55028acc9" />
 
 - **Leave History** - Complete leave application tracking
 <img width="1898" height="500" alt="Image" src="https://github.com/user-attachments/assets/d2ebdd45-f7c8-492c-bd09-3126f136c796" />
-
-- **Leave Policy Integration** - Policy-based leave management
-<img width="1894" height="299" alt="Image" src="https://github.com/user-attachments/assets/ca296c56-4491-4af8-9c35-12bda8fa6e49" />
 
 ### Policy Management
 - **Overtime Policy** - Global overtime policy management
